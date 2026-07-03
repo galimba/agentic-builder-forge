@@ -11,6 +11,10 @@ MD013: false
 # as inline emphasis within lists/examples, not as section headings.
 MD036: false
 
+# Table column style: off — a stylistic pipe-spacing/alignment rule (added in markdownlint v0.40.0);
+# the repo's tables are valid, just not in the "aligned"/"compact" style this rule prefers.
+MD060: false
+
 # Allow inline HTML (structured marker blocks like <!-- forge:tasks:begin v1 --> are load-bearing)
 MD033: false
 
