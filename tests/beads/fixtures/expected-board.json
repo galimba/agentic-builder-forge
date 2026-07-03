@@ -1,0 +1,29 @@
+[
+  {
+    "id": "fx-a01",
+    "title": "alpha groundtruth task",
+    "status": "in_review",
+    "ready": false,
+    "priority": 1,
+    "blockers": [],
+    "assignee": "forge-local"
+  },
+  {
+    "id": "fx-b02",
+    "title": "beta blocked task",
+    "status": "open",
+    "ready": false,
+    "priority": 2,
+    "blockers": ["fx-a01"],
+    "assignee": null
+  },
+  {
+    "id": "fx-c03",
+    "title": "gamma clean ready",
+    "status": "open",
+    "ready": true,
+    "priority": 3,
+    "blockers": [],
+    "assignee": null
+  }
+]

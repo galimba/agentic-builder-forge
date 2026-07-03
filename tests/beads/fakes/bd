@@ -1,0 +1,164 @@
+#!/usr/bin/env bash
+# Fake `bd` for the integration tests. Stateful via $BD_FAKE_STATE (a JSON array of beads);
+# every invocation is appended to $BD_FAKE_CALLS. Implements ONLY the surface run-task.sh /
+# kill-switch.sh / beads-lib.sh exercise, with shapes matching real bd v1.0.4. Ignores -C (state
+# location is $BD_FAKE_STATE, not the repo). NOT a bd emulator — just enough to pin the wiring.
+set -u
+# FOLD #5/#7: run-task now runs bd under forge_clean_env (env -i), which strips BD_FAKE_*. Derive the
+# state/calls paths from the `-C <root>` arg (which survives) so the fake works under env -i; the test sets
+# BD_FAKE_STATE=<root>/.beads-state.json and run-task calls `bd -C <root>`, so both resolve the SAME file.
+_bd_root=""; _bd_prev=""; for _bd_a in "$@"; do [ "$_bd_prev" = "-C" ] && { _bd_root="$_bd_a"; break; }; _bd_prev="$_bd_a"; done
+STATE="${BD_FAKE_STATE:-${_bd_root:+$_bd_root/.beads-state.json}}"; STATE="${STATE:-/tmp/bd-fake-state.json}"
+CALLS="${BD_FAKE_CALLS:-${_bd_root:+$_bd_root/.bd-calls.log}}"; CALLS="${CALLS:-/dev/null}"
+[ -f "$STATE" ] || echo '[]' >"$STATE"
+printf '%s\n' "$*" >>"$CALLS"
+
+# Strip global flags we don't need; collect the rest (preserving empty args, e.g. --assignee "").
+args=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -C)
+      shift 2 2>/dev/null || shift
+      continue
+      ;;
+    --json | -q | --quiet) shift && continue ;;
+    *)
+      args+=("$1")
+      shift
+      ;;
+  esac
+done
+sub="${args[0]:-}"
+n="${#args[@]}"
+
+jqs() { jq "$@" "$STATE"; }
+save() {
+  local tmp
+  tmp="$(mktemp)"
+  cat >"$tmp" && mv "$tmp" "$STATE"
+}
+
+case "$sub" in
+  version) echo "bd version 1.0.4 (fake)" ;;
+  statuses) printf 'Built-in statuses:\n  open\n  in_progress\n  blocked\n  closed\nCustom statuses:\n  in_review      [wip]\n' ;;
+  config) : ;; # `config set status.custom ...` -> noop
+  create)
+    title="${args[1]:-untitled}"
+    prio=2
+    i=2
+    while [ "$i" -lt "$n" ]; do
+      case "${args[$i]}" in
+        -p | --priority)
+          prio="${args[$((i + 1))]:-2}"
+          i=$((i + 2))
+          ;;
+        *) i=$((i + 1)) ;;
+      esac
+    done
+    id="fx-$(jqs 'length + 1')"
+    jqs --arg id "$id" --arg t "$title" --argjson p "$prio" \
+      '. + [{id:$id,title:$t,status:"open",priority:$p,issue_type:"task"}]' | save
+    echo "$id"
+    ;;
+  show) jqs --arg id "${args[1]:-}" '[.[] | select(.id==$id)]' ;;
+  ready) jqs '[.[] | select(.status=="open") | select((.assignee // "")=="")]' ;;
+  list)
+    # real bd v1.0.4: default `list` is non-closed; `--status closed [--closed-after DATE]` scopes to
+    # closed, filtered by closed_at (lexicographic on ISO8601). (D12 board reads both, disjoint.)
+    lstatus=""
+    lcut=""
+    i=1
+    while [ "$i" -lt "$n" ]; do
+      case "${args[$i]}" in
+        --status | -s)
+          lstatus="${args[$((i + 1))]:-}"
+          i=$((i + 2))
+          ;;
+        --closed-after)
+          lcut="${args[$((i + 1))]:-}"
+          i=$((i + 2))
+          ;;
+        *) i=$((i + 1)) ;;
+      esac
+    done
+    if [ "$lstatus" = "closed" ]; then
+      jqs --arg cut "$lcut" '[.[] | select(.status=="closed") | select($cut=="" or (.closed_at // "") >= $cut)]'
+    else
+      jqs '[.[] | select(.status!="closed")]'
+    fi
+    ;;
+  update)
+    id="${args[1]:-}"
+    claim=0
+    status=""
+    assignee="__UNSET__"
+    extref=""
+    i=2
+    while [ "$i" -lt "$n" ]; do
+      case "${args[$i]}" in
+        --claim)
+          claim=1
+          i=$((i + 1))
+          ;;
+        --status | -s)
+          status="${args[$((i + 1))]:-}"
+          i=$((i + 2))
+          ;;
+        --assignee | -a)
+          assignee="${args[$((i + 1))]:-}"
+          i=$((i + 2))
+          ;;
+        --external-ref)
+          extref="${args[$((i + 1))]:-}"
+          i=$((i + 2))
+          ;;
+        *) i=$((i + 1)) ;;
+      esac
+    done
+    [ "$claim" -eq 1 ] && status="in_progress"
+    jqs --arg id "$id" --arg st "$status" --arg as "$assignee" --arg er "$extref" '
+      map(if .id==$id then
+            (if $st!="" then .status=$st else . end)
+          | (if $as!="__UNSET__" then (if $as=="" then del(.assignee) else .assignee=$as end) else . end)
+          | (if $er!="" then .external_ref=$er else . end)
+          else . end)' | save
+    echo "updated $id"
+    ;;
+  close)
+    id="${args[1]:-}"
+    reason=""
+    i=2
+    while [ "$i" -lt "$n" ]; do
+      case "${args[$i]}" in
+        --reason | -r)
+          reason="${args[$((i + 1))]:-}"
+          i=$((i + 2))
+          ;;
+        *) i=$((i + 1)) ;;
+      esac
+    done
+    jqs --arg id "$id" --arg r "$reason" --arg ts "$(date -u +%FT%TZ)" 'map(if .id==$id then .status="closed" | .close_reason=$r | .closed_at=$ts else . end)' | save
+    echo "closed $id"
+    ;;
+  export)
+    out=""
+    i=1
+    while [ "$i" -lt "$n" ]; do
+      case "${args[$i]}" in
+        -o)
+          out="${args[$((i + 1))]:-}"
+          i=$((i + 2))
+          ;;
+        *) i=$((i + 1)) ;;
+      esac
+    done
+    if [ -n "$out" ]; then
+      jqs -c '.[]' >"$out"
+      printf 'EXPORT_PATH=%s\n' "$out" >>"$CALLS"
+    fi
+    ;;
+  *)
+    echo "fake-bd: unhandled subcommand: $sub" >&2
+    exit 0
+    ;;
+esac

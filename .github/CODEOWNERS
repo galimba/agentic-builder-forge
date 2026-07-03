@@ -1,0 +1,10 @@
+# The enforcement floor and harness are the protected surface — human-owned, on purpose.
+/.claude/     @{{MAINTAINER}}
+/harness/     @{{MAINTAINER}}
+/.forge/      @{{MAINTAINER}}
+/.github/     @{{MAINTAINER}}
+/tests/       @{{MAINTAINER}}
+/CLAUDE.md    @{{MAINTAINER}}
+/AGENTS.md    @{{MAINTAINER}}
+/CODEX.md     @{{MAINTAINER}}
+/templates/   @{{MAINTAINER}}

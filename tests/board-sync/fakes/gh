@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Fake `gh` for board-sync.sh tests. Board state in $GH_STATE = {"items":[{id,fields:{}}],"seq":N};
+# calls logged to $GH_CALLS. Field ids are "fld:<name>"; single-select option ids are "opt:<field>:<opt>".
+# Implements only what board-sync uses: api graphql (items read), project item-create|item-edit|item-archive|edit.
+set -u
+STATE="${GH_STATE:?}"; CALLS="${GH_CALLS:-/dev/null}"
+printf '%s\n' "$*" >>"$CALLS"
+save() { local t; t="$(mktemp)"; jq "$@" "$STATE" >"$t" && mv "$t" "$STATE"; }
+case "${1:-} ${2:-}" in
+  "api graphql")
+    jq -c '{data:{node:{items:{pageInfo:{hasNextPage:false,endCursor:null},nodes:[.items[]|{id:.id,fieldValues:{nodes:[(.fields|to_entries[])|if (.key=="Status" or .key=="Priority") then {__typename:"ProjectV2ItemFieldSingleSelectValue",name:.value,field:{name:.key}} else {__typename:"ProjectV2ItemFieldTextValue",text:.value,field:{name:.key}} end]}}]}}}}' "$STATE" ;;
+  "project item-create")
+    title=""; shift 2; while [ $# -gt 0 ]; do [ "$1" = --title ] && { title="$2"; shift; }; shift; done
+    id="PVTI_$(jq -r '.seq' "$STATE")"
+    save --arg id "$id" --arg t "$title" '.seq=(.seq+1)|.items+=[{id:$id,fields:{"Title":$t}}]'
+    jq -nc --arg id "$id" '{id:$id}' ;;
+  "project item-edit")
+    id=""; fid=""; kind=""; val=""; shift 2
+    while [ $# -gt 0 ]; do case "$1" in
+      --id) id="$2"; shift ;; --field-id) fid="$2"; shift ;; --project-id) shift ;;
+      --text) kind=text; val="$2"; shift ;; --single-select-option-id) kind=opt; val="$2"; shift ;;
+      --title) kind=title; val="$2"; shift ;; --clear) kind=clear ;;
+    esac; shift; done
+    if [ "$kind" = title ]; then fname="Title"; sval="$val"
+    else fname="${fid#fld:}"; case "$kind" in opt) sval="${val##*:}" ;; clear) sval="" ;; *) sval="$val" ;; esac; fi
+    save --arg id "$id" --arg k "$fname" --arg v "$sval" '(.items[]|select(.id==$id)|.fields[$k])=$v' ;;
+  "project item-archive")
+    id=""; shift 2; while [ $# -gt 0 ]; do [ "$1" = --id ] && { id="$2"; shift; }; shift; done
+    save --arg id "$id" '.items|=map(select(.id!=$id))' ;;
+  "project edit") : ;;   # README digest stamp — noop
+  *) echo "" ;;
+esac

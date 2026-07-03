@@ -1,0 +1,16 @@
+# Normalize line endings. The harness is shell-heavy — a CRLF checkout would break
+# every hook and script — so text is forced to LF regardless of platform.
+* text=auto eol=lf
+
+# Scripts and shell-sourced config MUST be LF.
+*.sh    text eol=lf
+*.bash  text eol=lf
+
+# Generated / vendored: keep out of diffs and language stats.
+pnpm-lock.yaml linguist-generated=true -diff
+
+# Binary assets (none shipped today, but future-proof the rule).
+*.png binary
+*.jpg binary
+*.gif binary
+*.svg binary

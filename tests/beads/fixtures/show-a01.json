@@ -1,0 +1,23 @@
+[
+  {
+    "id": "fx-a01",
+    "title": "alpha groundtruth task",
+    "status": "in_review",
+    "priority": 1,
+    "issue_type": "task",
+    "assignee": "forge-local",
+    "owner": "dev@example.com",
+    "created_at": "2026-06-05T08:29:25Z",
+    "created_by": "example-user",
+    "updated_at": "2026-06-05T08:29:26Z",
+    "started_at": "2026-06-05T08:29:26Z",
+    "dependents": [
+      {
+        "id": "fx-b02",
+        "title": "beta blocked task",
+        "status": "open",
+        "dependency_type": "blocks"
+      }
+    ]
+  }
+]

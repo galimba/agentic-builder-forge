@@ -1,0 +1,15 @@
+# ShellCheck configuration
+# See: https://github.com/koalaman/shellcheck/wiki/optional
+
+shell=bash
+
+# SC2034: Variable appears unused (false positives with sourced config/lib files)
+disable=SC2034
+# SC1091: Not following sourced files (can't resolve at lint time)
+disable=SC1091
+# SC2016: Expressions don't expand in single quotes (intentional awk/grep patterns)
+disable=SC2016
+# SC2295: Expansions inside ${..} need separate quoting (intentional pattern trimming)
+disable=SC2295
+# SC2126: Consider grep -c instead of grep|wc -l (style preference)
+disable=SC2126

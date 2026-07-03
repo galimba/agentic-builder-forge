@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# agentic-builder-forge — git pre-commit guard (cp-commitguard, ALL-ACTORS TIER).
+#
+# Refuses a commit while HEAD is on main/master — main advances ONLY by PR-merge from a task branch.
+# This is the git-native half of the commit-to-main guard: it fires at git-exec time for EVERY actor
+# (agent AND human) and regardless of how the commit was invoked (eval / -c / pipe), so it catches what
+# the PreToolUse deny-hook's argv walker cannot. The only way to skip a pre-commit hook is --no-verify,
+# which the deny-hook already refuses.
+#
+# INSTALL (witness-verified, not honor-based): git config core.hooksPath harness/githooks
+#   The SessionStart witness refuses to witness a session whose hooks path is not harness/githooks, so
+#   the privileged ops (intake convert / run-task finish) fail-closed when this guard is not installed.
+#
+# SELF-CONTAINED: no lib.sh dependency, so it holds in any clone/worktree even if the harness moves.
+# Branch read with `symbolic-ref --short -q HEAD` — the ONLY reliable reader (abbrev-ref returns "HEAD"
+# for the unborn first commit, which IS a commit on main). Fail-closed on detached/unborn/git-error.
+# Escape: FORGE_ALLOW_MAIN_MERGE=1 (explicit, logged) — the rare deliberate local merge-finalize on main.
+set -u
+
+br="$(git symbolic-ref --short -q HEAD 2>/dev/null)" || br=""
+allow="${FORGE_ALLOW_MAIN_MERGE:-0}"
+
+blocked=0
+case "$br" in
+  main | master) blocked=1 ;;
+  "") blocked=1 ;; # detached / unborn / git error — unresolvable => fail-closed
+esac
+
+if [ "$blocked" = 1 ]; then
+  if [ "$allow" = "1" ]; then
+    # Logged escape (ISO-42001 evidence); best-effort, never blocks the permitted commit.
+    hd="$(git rev-parse --show-toplevel 2>/dev/null)/.harness"
+    mkdir -p "$hd" 2>/dev/null &&
+      printf '%s\t%s\tgit-hook: commit permitted on '\''%s'\'' via FORGE_ALLOW_MAIN_MERGE=1\n' \
+        "$(date -u +%FT%TZ 2>/dev/null || printf now)" \
+        "${USER:-$(id -un 2>/dev/null || printf unknown)}" \
+        "${br:-<unresolvable>}" >>"$hd/main-commit-escape.log" 2>/dev/null || true
+    exit 0
+  fi
+  if [ -n "$br" ]; then
+    printf "agentic-builder-forge: REFUSED commit on protected branch '%s' — main/master advances ONLY by PR-merge from a task branch (the cardinal house rule, now mechanical). Commit on a task branch; set FORGE_ALLOW_MAIN_MERGE=1 for a supervised, logged merge-finalize.\n" "$br" >&2
+  else
+    printf "agentic-builder-forge: REFUSED commit — cannot resolve the current branch (detached HEAD / unborn / git error). A commit in an unresolvable branch state is refused (fail-closed); check out a task branch, or set FORGE_ALLOW_MAIN_MERGE=1 for a supervised, logged exception.\n" >&2
+  fi
+  exit 1
+fi
+
+exit 0

@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: Canonical Gate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+      - name: Enable pnpm via corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.4.1 --activate
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run the canonical gate
+        # Default (tolerant) mode: suites whose runtime is absent on the runner
+        # (bd, devcontainer CLI) SKIP honestly (rc 75) and are reported distinctly —
+        # never folded into PASS. Set FORGE_GATE_STRICT=1 on a fully-provisioned
+        # runner to make any SKIP fail the gate.
+        run: bash tests/run-all.sh
+
+  doctor:
+    name: Template Doctor
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+      - name: Run doctor (at-rest mode)
+        run: bash .forge/scripts/doctor.sh
+
+  lint-shell:
+    name: Lint Shell
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+      - name: ShellCheck (error severity, whole tree)
+        run: |
+          find harness .claude/hooks .forge/scripts tests -name '*.sh' -print0 \
+            | xargs -0 shellcheck --severity=error
+      - name: ShellCheck (default severity, init layer)
+        run: shellcheck .forge/scripts/*.sh
+
+  lint-markdown:
+    name: Lint Markdown
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+      - uses: DavidAnson/markdownlint-cli2-action@05f32210e84442804257b2a6f20b273450ec8265  # v19
+        with:
+          globs: |
+            **/*.md
+            !node_modules
+          config: ".markdownlint.yaml"
+
+  check-typos:
+    name: Check Typos
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+      - uses: crate-ci/typos@02ea592e44b3a53c302f697cddca7641cd051c3d  # v1
+        with:
+          config: "_typos.toml"

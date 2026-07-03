@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Fake `gh` for board-bootstrap.sh tests. Board state in $GH_STATE (json); calls logged to $GH_CALLS.
+# Implements only what bootstrap uses: project list|create|field-list|field-create|edit, api graphql
+# (updateProjectV2Field). No network, no real gh. A project "exists" iff state.created==true.
+set -u
+STATE="${GH_STATE:?}"; CALLS="${GH_CALLS:-/dev/null}"
+printf '%s\n' "$*" >>"$CALLS"
+j() { jq "$@" "$STATE"; }
+save() { local t; t="$(mktemp)"; jq "$@" "$STATE" >"$t" && mv "$t" "$STATE"; }
+case "${1:-} ${2:-}" in
+  "project list")
+    [ "$(j -r '.created')" = true ] && j -c '{projects:[{number,id:.node,title}],totalCount:1}' || echo '{"projects":[],"totalCount":0}' ;;
+  "project create")
+    title=""; shift 2; while [ $# -gt 0 ]; do [ "$1" = --title ] && { title="$2"; shift; }; shift; done
+    save --arg t "$title" '.created=true|.title=$t'; j -c '{number,id:.node}' ;;
+  "project field-list") j -c '{fields,totalCount:(.fields|length)}' ;;
+  "project field-create")
+    name=""; opts=""; shift 2
+    while [ $# -gt 0 ]; do case "$1" in --name) name="$2"; shift;; --single-select-options) opts="$2"; shift;; esac; shift; done
+    id="PVTF_fake_$(printf '%s' "$name" | tr -c 'A-Za-z0-9' _)"
+    oj="$(printf '%s' "$opts" | jq -R 'select(length>0)|split(",")|to_entries|map({id:("o"+(.key|tostring)),name:.value})')"
+    save --arg n "$name" --arg id "$id" --argjson o "${oj:-[]}" '.fields+=[{id:$id,name:$n,options:$o}]'
+    j -c --arg id "$id" --arg n "$name" '{id:$id,name:$n}' ;;
+  "project edit") : ;;
+  "api graphql")
+    save '(.fields[]|select(.name=="Status").options)|=[{id:"s0",name:"Backlog"},{id:"s1",name:"Ready"},{id:"s2",name:"In progress"},{id:"s3",name:"In review"},{id:"s4",name:"Blocked"},{id:"s5",name:"Done"}]'
+    echo '{"data":{"updateProjectV2Field":{"projectV2Field":{"id":"status"}}}}' ;;
+  *) echo "" ;;
+esac

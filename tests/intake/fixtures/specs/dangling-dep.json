@@ -1,0 +1,16 @@
+{
+  "spec_version": "forge/v1",
+  "target_repos": ["agentic-builder-forge"],
+  "tasks": [
+    {
+      "id": "T001",
+      "title": "A",
+      "satisfies": ["FR-001"],
+      "priority": "P1",
+      "depends_on": ["T999"],
+      "target_repo": "agentic-builder-forge",
+      "definition_of_done": ["x"],
+      "success_criteria": ["y"]
+    }
+  ]
+}

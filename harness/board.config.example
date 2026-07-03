@@ -1,0 +1,30 @@
+# board.config.example — reference manifest for the oversight board (GitHub Project v2).
+#
+# The LIVE harness/board.config is git-ignored and is emitted deterministically by:
+#     ./harness/board-bootstrap.sh ensure        (or `verify` for a read-only re-emit)
+# board-sync.sh sources board.config to learn the project + field + option node ids.
+#
+# The values below are PLACEHOLDERS showing the shape — run board-bootstrap.sh against your own
+# org/project to emit the real ids. Project/field/option NODE IDs are not secret. Status is the
+# built-in single-select (reshaped to the six lanes); "Bead Assignee" is custom because
+# "Assignee" is a reserved Projects v2 field name.
+BOARD_OWNER="example-org"
+BOARD_PROJECT_NUMBER="1"
+BOARD_PROJECT_NODE_ID="PVT_xxxxxxxxxxxxxxxxxxxx"
+BOARD_FIELD_TITLE="PVTF_xxxxxxxxxxxxxxxxxxxxxxxx"
+BOARD_FIELD_STATUS="PVTSSF_xxxxxxxxxxxxxxxxxxxxxxxx"
+BOARD_FIELD_BEAD_ID="PVTF_xxxxxxxxxxxxxxxxxxxxxxxx"
+BOARD_FIELD_BEAD_ASSIGNEE="PVTF_xxxxxxxxxxxxxxxxxxxxxxxx"
+BOARD_FIELD_BLOCKED_BY="PVTF_xxxxxxxxxxxxxxxxxxxxxxxx"
+BOARD_FIELD_PRIORITY="PVTSSF_xxxxxxxxxxxxxxxxxxxxxxxx"
+BOARD_OPT_STATUS_BACKLOG="xxxxxxxx"
+BOARD_OPT_STATUS_READY="xxxxxxxx"
+BOARD_OPT_STATUS_IN_PROGRESS="xxxxxxxx"
+BOARD_OPT_STATUS_IN_REVIEW="xxxxxxxx"
+BOARD_OPT_STATUS_BLOCKED="xxxxxxxx"
+BOARD_OPT_STATUS_DONE="xxxxxxxx"
+BOARD_OPT_PRIORITY_P0="xxxxxxxx"
+BOARD_OPT_PRIORITY_P1="xxxxxxxx"
+BOARD_OPT_PRIORITY_P2="xxxxxxxx"
+BOARD_OPT_PRIORITY_P3="xxxxxxxx"
+BOARD_OPT_PRIORITY_UNSPECIFIED="xxxxxxxx"

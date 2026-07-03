@@ -1,0 +1,5 @@
+[
+  {"id":"fx-a01","title":"alpha groundtruth","status":"in_review","ready":false,"priority":1,"blockers":[],"assignee":"forge-local"},
+  {"id":"fx-b02","title":"beta blocked","status":"open","ready":false,"priority":2,"blockers":["fx-a01"],"assignee":null},
+  {"id":"fx-d04","title":"delta done","status":"closed","ready":false,"priority":0,"blockers":[],"assignee":"forge-local"}
+]

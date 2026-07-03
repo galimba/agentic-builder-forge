@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Fake `gh` for the integration tests. Logs to $GH_FAKE_CALLS. A PR "merged" iff its URL/number
+# appears in $GH_FAKE_MERGED. Implements only: `repo view`, `pr create`, `pr view`.
+set -u
+CALLS="${GH_FAKE_CALLS:-/dev/null}"
+printf '%s\n' "$*" >>"$CALLS"
+sub="${1:-}"
+sub2="${2:-}"
+case "$sub $sub2" in
+  "repo view") echo "fake-owner/fake-repo" ;; # --json nameWithOwner -q .nameWithOwner
+  "pr create") echo "https://github.com/fake-owner/fake-repo/pull/777" ;;
+  "pr view")
+    pr="${3:-}"
+    if [ -n "$pr" ] && grep -qF "$pr" "${GH_FAKE_MERGED:-/dev/null}" 2>/dev/null; then
+      echo "2026-06-05T12:00:00Z" # mergedAt
+    else
+      echo "null"
+    fi
+    ;;
+  *) echo "" ;;
+esac

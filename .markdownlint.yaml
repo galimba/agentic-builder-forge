@@ -1,0 +1,41 @@
+# Markdownlint configuration for agentic-builder-forge
+# See: https://github.com/DavidAnson/markdownlint/blob/main/doc/Rules.md
+
+default: true
+
+# Line length: relaxed for readability (harness docs carry long rationale lines)
+MD013:
+  line_length: 200
+  code_blocks: false
+  tables: false
+  headings: false
+
+# Allow inline HTML (structured marker blocks like <!-- forge:tasks:begin v1 --> are load-bearing)
+MD033: false
+
+# Allow duplicate headings in different sections
+MD024:
+  siblings_only: true
+
+# Don't require first line to be a heading
+MD041: false
+
+# Allow multiple H1 headings
+MD025: false
+
+# Allow trailing punctuation in headings
+MD026:
+  punctuation: ".,;:!"
+
+# Allow multiple blank lines
+MD012:
+  maximum: 2
+
+# Allow bare URLs
+MD034: false
+
+# Don't require language on fenced code blocks
+MD040: false
+
+# Allow any ordered list prefix style
+MD029: false

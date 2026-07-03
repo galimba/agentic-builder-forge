@@ -1,0 +1,16 @@
+[
+  {
+    "id": "fx-c03",
+    "title": "gamma clean ready",
+    "status": "open",
+    "priority": 3,
+    "issue_type": "task",
+    "owner": "dev@example.com",
+    "created_at": "2026-06-05T08:31:27Z",
+    "created_by": "example-user",
+    "updated_at": "2026-06-05T08:31:27Z",
+    "dependency_count": 0,
+    "dependent_count": 0,
+    "comment_count": 0
+  }
+]

@@ -1,0 +1,12 @@
+# harness/repos.config — target-name -> ABSOLUTE local clone path (one per line).
+#
+# SETUP (a fresh clone instantiates this):
+#   cp harness/repos.config.example harness/repos.config
+#   # then set each target to its absolute path ON THIS HOST.
+#
+# The real harness/repos.config is gitignored (it holds host-absolute paths = instance data); this
+# .example is the committed template. run-task.sh reads the file at $FORGE_REPOS_CONFIG or
+# $ROOT/harness/repos.config and fail-closes on a missing file / unknown name / non-absolute path.
+#
+# <target-name>=/absolute/path/to/local/clone
+# example-target=/abs/path/to/example-target

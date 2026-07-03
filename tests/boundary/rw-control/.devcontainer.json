@@ -1,0 +1,84 @@
+// TEST FIXTURE — deliberately divergent copy of harness/sandbox/devcontainer.json with the enforce
+// mounts flipped RW, so tests/boundary/run.sh can prove the EROFS assertion is non-vacuous (the
+// write SUCCEEDS against this control manifest). Not a deployed manifest.
+//
+// One static manifest serves every per-task worktree via variable expansion:
+//   ${localWorkspaceFolder} = the worktree passed to `--workspace-folder` (the per-task RW workspace)
+//   ${localEnv:FORGE_MAIN_ROOT}    = the main checkout root (harness/.claude/.git live here; set by sandbox-lib.sh)
+//   ${localEnv:FORGE_SANDBOX_IMAGE} = the task image (set by sandbox-lib.sh; overridable)
+//
+// WHAT-CLOSES-WHAT (phase-scoped, in brief):
+//   HIGH-2 (symlink portal): EXECUTION phase CLOSED by Layer B below, at the mount layer (EROFS),
+//     proven by the differential red-proof. INTAKE phase: writable surface is specs/ under the
+//     textual deny-hook; intake is host-side today, so the mount-layer close does not reach it.
+//   HIGH-1 (PTY+wrapper ratify): EXECUTION phase closed by the post-convert container — ratify
+//     predates it (temporal disjointness), so there is no ratify inside to subvert. INTAKE phase:
+//     remains under today's TTY-gate + hardened-deny; close deferred to POSIX-user-separation under a
+//     future intake containerization.
+{
+  "name": "forge-task",
+  "image": "${localEnv:FORGE_SANDBOX_IMAGE}",
+
+  // Layer A — the worktree IS the workspace, mounted at its REAL absolute path so the worktree's
+  // absolute gitdir (<main>/.git/worktrees/<slug>) resolves inside the container.
+  "workspaceFolder": "${localWorkspaceFolder}",
+  "workspaceMount": "source=${localWorkspaceFolder},target=${localWorkspaceFolder},type=bind",
+
+  "mounts": [
+    // Layer B — enforcement + scripts are READ-ONLY. A symlink pointing here fails the write at the
+    // MOUNT LAYER (EROFS) regardless of textual path classification — the OS-level close for HIGH-2
+    // that the textual deny hook cannot substitute for. (.claude is RO; the worktree lives at
+    // .claude/worktrees/<slug> and is re-mounted RW by workspaceMount above — the RW hole.)
+    "source=${localEnv:FORGE_MAIN_ROOT}/harness,target=${localEnv:FORGE_MAIN_ROOT}/harness,type=bind",
+    "source=${localEnv:FORGE_MAIN_ROOT}/.claude,target=${localEnv:FORGE_MAIN_ROOT}/.claude,type=bind",
+
+    // .git is READ-WRITE on purpose: it is the agent's OWN version-control plumbing. A worktree
+    // commit locks refs/heads/<branch> in the SHARED .git (not the per-worktree dir), and push writes
+    // .git/config + .git/refs/remotes — so surgical RO holes cascade. .git is NOT an enforcement
+    // surface; RW here does NOT reopen HIGH-2 (the portal targets harness/.claude, which stay RO).
+    "source=${localEnv:FORGE_MAIN_ROOT}/.git,target=${localEnv:FORGE_MAIN_ROOT}/.git,type=bind",
+    // F1a: .git/hooks RO — mount-layer DEFENSE-IN-DEPTH on the hooks-dir host-exec axis.
+    // Blocks an in-container plant of .git/hooks/* at the MOUNT (EROFS) regardless of forge_git.
+    // forge_git (F1b) ALREADY closes BOTH the hooks-dir and the core.hooksPath-redirect axes for
+    // every harness host-side git op (core.hooksPath=/dev/null overrides both); this mount is the
+    // second, independent layer — it also covers any future host git op added without forge_git, or
+    // a non-harness git invocation. Proven LIVE by tests/sandbox A5b (the in-container plant is
+    // EROFS-denied). Nested RO-under-RW IS expressible on overlay2 and does not break git
+    // (git reads .git/hooks, never writes it during commit/push).
+    "source=${localEnv:FORGE_MAIN_ROOT}/.git/hooks,target=${localEnv:FORGE_MAIN_ROOT}/.git/hooks,type=bind,readonly"
+
+    // ABSENT BY OMISSION (stronger than RO):
+    //   .beads/  — bd is runner-side only (the agent never invokes it); absence also removes the
+    //              embedded-dolt hang class from inside the container entirely.
+    //   ../my-vault — nothing execution-side reads it.
+    //   specs/   — execution does not write specs (it is the intake surface, host-side today).
+  ],
+
+  "runArgs": [
+    // Layer A hardened-container tier (proven under the differential red-proof's positive control).
+    "--user",
+    "1000:1000",
+    "--cap-drop=ALL",
+    "--security-opt",
+    "no-new-privileges",
+    // seccomp: the daemon's builtin default profile (a strong allow-list; confirmed active) applies
+    // automatically and is INTENTIONALLY NOT overridden here — passing --security-opt seccomp=<file>
+    // REPLACES (does not stack with) the default, so a hand-authored profile would only WEAKEN it. A
+    // vetted tighter allow-list profile is a documented future hardening, not shipped in the baseline.
+
+    // Layer C — egress default-deny at the container-network layer. A microVM's separate netns honors
+    // this identically; it is NOT host iptables (forward-compat (b)). The allow-list proxy/bridge
+    // layers on top of this baseline. Execution needs no registry: deps are installed host-side into
+    // the worktree before the sandbox comes up, and arrive via the RW worktree mount.
+    "--network",
+    "none"
+
+    // forward-compat (c): the runtime is the SINGLE free swap point. Adding "--runtime","runsc" (or
+    // "kata") here switches hardened-container -> microVM with NO mount or image change. Left unset =
+    // the platform default (runc). The microVM dial is expressed-but-unused today.
+  ],
+
+  "containerUser": "1000:1000",
+  "remoteUser": "1000",
+  "overrideCommand": true
+}

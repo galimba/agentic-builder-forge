@@ -1,0 +1,857 @@
+{
+  "version": "forge/intake-categories/v1",
+  "categories": [
+    {
+      "id": "competitive-differentiation",
+      "name": "Competitive Differentiation / Positioning vs Named Rivals",
+      "cluster": "Scope & Intent",
+      "risk_default": "none"
+    },
+    {
+      "id": "completion-signals-acceptance",
+      "name": "Completion Signals & Acceptance Criteria",
+      "cluster": "Scope & Intent",
+      "risk_default": "none"
+    },
+    {
+      "id": "functional-appropriateness",
+      "name": "Functional Appropriateness",
+      "cluster": "Scope & Intent",
+      "risk_default": "none"
+    },
+    {
+      "id": "functional-completeness",
+      "name": "Functional Completeness",
+      "cluster": "Scope & Intent",
+      "risk_default": "none"
+    },
+    {
+      "id": "functional-correctness",
+      "name": "Functional Correctness & Accuracy",
+      "cluster": "Scope & Intent",
+      "risk_default": "none"
+    },
+    {
+      "id": "functional-scope-behaviour",
+      "name": "Functional Scope & Behaviour",
+      "cluster": "Scope & Intent",
+      "risk_default": "none"
+    },
+    {
+      "id": "misc-placeholders",
+      "name": "Misc / Residual Placeholders",
+      "cluster": "Scope & Intent",
+      "risk_default": "none"
+    },
+    {
+      "id": "solution-generality",
+      "name": "Solution Generality vs Single-Purpose",
+      "cluster": "Scope & Intent",
+      "risk_default": "none"
+    },
+    {
+      "id": "target-audience-stakeholders",
+      "name": "Target Audience, User Segments & Stakeholders",
+      "cluster": "Scope & Intent",
+      "risk_default": "none"
+    },
+    {
+      "id": "data-lineage-provenance",
+      "name": "Data Lineage & Provenance",
+      "cluster": "Domain & Data",
+      "risk_default": "none"
+    },
+    {
+      "id": "data-migration-schema-evolution",
+      "name": "Data Migration & Schema Evolution",
+      "cluster": "Domain & Data",
+      "risk_default": "by-default"
+    },
+    {
+      "id": "data-model-domain",
+      "name": "Data Model & Domain Entities",
+      "cluster": "Domain & Data",
+      "risk_default": "none"
+    },
+    {
+      "id": "data-quality-validation",
+      "name": "Data Quality & Validation",
+      "cluster": "Domain & Data",
+      "risk_default": "by-default"
+    },
+    {
+      "id": "late-duplicate-out-of-order",
+      "name": "Late / Duplicate / Out-of-Order Data",
+      "cluster": "Domain & Data",
+      "risk_default": "none"
+    },
+    {
+      "id": "ml-training-data-provenance",
+      "name": "Training Data Provenance, Consent & Licensing",
+      "cluster": "Domain & Data",
+      "risk_default": "by-default"
+    },
+    {
+      "id": "offline-sync-conflict-resolution",
+      "name": "Offline Capability & Sync / Conflict Resolution",
+      "cluster": "Domain & Data",
+      "risk_default": "none"
+    },
+    {
+      "id": "persistence-storage-choice",
+      "name": "Persistence & Storage Choice",
+      "cluster": "Domain & Data",
+      "risk_default": "none"
+    },
+    {
+      "id": "source-schema-drift",
+      "name": "Upstream Source Schema Drift",
+      "cluster": "Domain & Data",
+      "risk_default": "none"
+    },
+    {
+      "id": "state-management",
+      "name": "State Management & Authority",
+      "cluster": "Domain & Data",
+      "risk_default": "none"
+    },
+    {
+      "id": "time-zones-clock",
+      "name": "Time, Zones & Clock Correctness",
+      "cluster": "Domain & Data",
+      "risk_default": "none"
+    },
+    {
+      "id": "api-contract-versioning",
+      "name": "API Contract Design & Versioning",
+      "cluster": "Interfaces & Integration",
+      "risk_default": "none"
+    },
+    {
+      "id": "cli-exit-code-contract",
+      "name": "CLI Exit-Code Contract",
+      "cluster": "Interfaces & Integration",
+      "risk_default": "none"
+    },
+    {
+      "id": "cli-stdio-piping-contract",
+      "name": "CLI stdin/stdout/stderr & Piping Contract",
+      "cluster": "Interfaces & Integration",
+      "risk_default": "none"
+    },
+    {
+      "id": "co-existence",
+      "name": "Co-existence (Shared Environment)",
+      "cluster": "Interfaces & Integration",
+      "risk_default": "none"
+    },
+    {
+      "id": "eventing-messaging-async",
+      "name": "Eventing / Messaging / Async Semantics",
+      "cluster": "Interfaces & Integration",
+      "risk_default": "none"
+    },
+    {
+      "id": "integration-external-dependencies",
+      "name": "Integration, Interoperability & External Dependencies",
+      "cluster": "Interfaces & Integration",
+      "risk_default": "none"
+    },
+    {
+      "id": "public-api-surface-semver",
+      "name": "Public API Surface & Semantic Versioning",
+      "cluster": "Interfaces & Integration",
+      "risk_default": "by-default"
+    },
+    {
+      "id": "appropriateness-recognizability",
+      "name": "Appropriateness Recognizability",
+      "cluster": "UX & Interaction",
+      "risk_default": "none"
+    },
+    {
+      "id": "assistive-accessibility",
+      "name": "Assistive Accessibility (Keyboard / Screen-Reader / Semantic / Contrast)",
+      "cluster": "UX & Interaction",
+      "risk_default": "none"
+    },
+    {
+      "id": "cli-arg-flag-ux",
+      "name": "CLI Argument / Flag / Subcommand UX",
+      "cluster": "UX & Interaction",
+      "risk_default": "none"
+    },
+    {
+      "id": "human-factors-ergonomics",
+      "name": "Human Factors & Ergonomics",
+      "cluster": "UX & Interaction",
+      "risk_default": "none"
+    },
+    {
+      "id": "inclusivity",
+      "name": "Inclusivity / Diversity of Users",
+      "cluster": "UX & Interaction",
+      "risk_default": "none"
+    },
+    {
+      "id": "internationalization-localization",
+      "name": "Internationalization & Localization",
+      "cluster": "UX & Interaction",
+      "risk_default": "none"
+    },
+    {
+      "id": "learnability",
+      "name": "Learnability / Onboarding",
+      "cluster": "UX & Interaction",
+      "risk_default": "none"
+    },
+    {
+      "id": "motion-animation-design",
+      "name": "Motion / Animation & Scroll Choreography",
+      "cluster": "UX & Interaction",
+      "risk_default": "none"
+    },
+    {
+      "id": "operability",
+      "name": "Operability (Ease of Control)",
+      "cluster": "UX & Interaction",
+      "risk_default": "none"
+    },
+    {
+      "id": "progressive-enhancement-graceful-degradation",
+      "name": "Progressive Enhancement & Graceful Degradation",
+      "cluster": "UX & Interaction",
+      "risk_default": "none"
+    },
+    {
+      "id": "reduced-motion-accessibility",
+      "name": "Motion-Sensitivity / Reduced-Motion Accessibility",
+      "cluster": "UX & Interaction",
+      "risk_default": "none"
+    },
+    {
+      "id": "responsive-multi-viewport",
+      "name": "Responsive / Multi-Viewport / Cross-Device Layout",
+      "cluster": "UX & Interaction",
+      "risk_default": "none"
+    },
+    {
+      "id": "sdk-developer-experience",
+      "name": "Developer Experience & API Ergonomics",
+      "cluster": "UX & Interaction",
+      "risk_default": "none"
+    },
+    {
+      "id": "self-descriptiveness",
+      "name": "Self-descriptiveness",
+      "cluster": "UX & Interaction",
+      "risk_default": "none"
+    },
+    {
+      "id": "ui-consistency",
+      "name": "UI / Interaction Consistency",
+      "cluster": "UX & Interaction",
+      "risk_default": "none"
+    },
+    {
+      "id": "ui-responsiveness",
+      "name": "UI Responsiveness & Feedback",
+      "cluster": "UX & Interaction",
+      "risk_default": "none"
+    },
+    {
+      "id": "user-assistance",
+      "name": "User Assistance & In-Product Help",
+      "cluster": "UX & Interaction",
+      "risk_default": "none"
+    },
+    {
+      "id": "user-engagement-aesthetics",
+      "name": "User Engagement & Aesthetics",
+      "cluster": "UX & Interaction",
+      "risk_default": "none"
+    },
+    {
+      "id": "user-error-protection",
+      "name": "User Error Protection",
+      "cluster": "UX & Interaction",
+      "risk_default": "none"
+    },
+    {
+      "id": "ux-interaction-flow",
+      "name": "UX Interaction Flow & Navigation",
+      "cluster": "UX & Interaction",
+      "risk_default": "none"
+    },
+    {
+      "id": "brand-voice-editorial-consistency",
+      "name": "Brand Voice, Tone & Editorial Style",
+      "cluster": "Content & Brand",
+      "risk_default": "none"
+    },
+    {
+      "id": "content-design-information-architecture",
+      "name": "Content Design & Information Architecture",
+      "cluster": "Content & Brand",
+      "risk_default": "none"
+    },
+    {
+      "id": "content-model-structure",
+      "name": "Structured Content Model (CMS Schema)",
+      "cluster": "Content & Brand",
+      "risk_default": "none"
+    },
+    {
+      "id": "content-source-fidelity",
+      "name": "Content Source Fidelity (Representative vs Authoritative)",
+      "cluster": "Content & Brand",
+      "risk_default": "none"
+    },
+    {
+      "id": "content-versioning",
+      "name": "Content / Documentation Versioning",
+      "cluster": "Content & Brand",
+      "risk_default": "none"
+    },
+    {
+      "id": "conversion-tracking-experimentation",
+      "name": "Conversion Tracking & Experimentation",
+      "cluster": "Content & Brand",
+      "risk_default": "none"
+    },
+    {
+      "id": "developer-docs-examples",
+      "name": "Developer Documentation & Runnable Examples",
+      "cluster": "Content & Brand",
+      "risk_default": "none"
+    },
+    {
+      "id": "editorial-publishing-workflow",
+      "name": "Editorial & Publishing Workflow",
+      "cluster": "Content & Brand",
+      "risk_default": "none"
+    },
+    {
+      "id": "seo-discoverability",
+      "name": "SEO / Metadata / Social-Share Discoverability",
+      "cluster": "Content & Brand",
+      "risk_default": "none"
+    },
+    {
+      "id": "terminology-consistency",
+      "name": "Terminology & Consistency (Glossary)",
+      "cluster": "Content & Brand",
+      "risk_default": "none"
+    },
+    {
+      "id": "visual-brand-consistency",
+      "name": "Visual Brand Identity & Cross-Surface Consistency",
+      "cluster": "Content & Brand",
+      "risk_default": "none"
+    },
+    {
+      "id": "caching-strategy",
+      "name": "Caching Strategy",
+      "cluster": "Quality: Performance & Efficiency",
+      "risk_default": "none"
+    },
+    {
+      "id": "capacity",
+      "name": "Capacity (Max Load / Volume)",
+      "cluster": "Quality: Performance & Efficiency",
+      "risk_default": "none"
+    },
+    {
+      "id": "data-freshness-completeness-sla",
+      "name": "Data Freshness & Completeness SLA",
+      "cluster": "Quality: Performance & Efficiency",
+      "risk_default": "none"
+    },
+    {
+      "id": "ml-inference-latency-cost",
+      "name": "ML Inference Latency & Cost",
+      "cluster": "Quality: Performance & Efficiency",
+      "risk_default": "none"
+    },
+    {
+      "id": "resource-utilization",
+      "name": "Resource Utilization & Efficiency",
+      "cluster": "Quality: Performance & Efficiency",
+      "risk_default": "none"
+    },
+    {
+      "id": "throughput",
+      "name": "Throughput",
+      "cluster": "Quality: Performance & Efficiency",
+      "risk_default": "none"
+    },
+    {
+      "id": "time-behaviour-latency",
+      "name": "Time Behaviour / Latency & Response Time",
+      "cluster": "Quality: Performance & Efficiency",
+      "risk_default": "none"
+    },
+    {
+      "id": "web-vitals",
+      "name": "Core Web Vitals / Perceived Performance",
+      "cluster": "Quality: Performance & Efficiency",
+      "risk_default": "none"
+    },
+    {
+      "id": "availability",
+      "name": "Availability / Uptime (MTBF)",
+      "cluster": "Quality: Reliability & Resilience",
+      "risk_default": "none"
+    },
+    {
+      "id": "concurrency-consistency",
+      "name": "Concurrency & Consistency Model",
+      "cluster": "Quality: Reliability & Resilience",
+      "risk_default": "by-default"
+    },
+    {
+      "id": "edge-cases-failure-handling",
+      "name": "Edge Cases, Error Taxonomy & Failure Handling",
+      "cluster": "Quality: Reliability & Resilience",
+      "risk_default": "none"
+    },
+    {
+      "id": "fault-tolerance",
+      "name": "Fault Tolerance",
+      "cluster": "Quality: Reliability & Resilience",
+      "risk_default": "none"
+    },
+    {
+      "id": "faultlessness",
+      "name": "Faultlessness (Failure Frequency & Severity)",
+      "cluster": "Quality: Reliability & Resilience",
+      "risk_default": "none"
+    },
+    {
+      "id": "idempotency-retries",
+      "name": "Idempotency, Retries & Delivery Semantics",
+      "cluster": "Quality: Reliability & Resilience",
+      "risk_default": "none"
+    },
+    {
+      "id": "link-integrity",
+      "name": "Link Integrity / No-Broken-Links / Missing-Page Handling",
+      "cluster": "Quality: Reliability & Resilience",
+      "risk_default": "none"
+    },
+    {
+      "id": "ml-eval-metrics",
+      "name": "ML Evaluation Metrics & Acceptance Thresholds",
+      "cluster": "Quality: Reliability & Resilience",
+      "risk_default": "none"
+    },
+    {
+      "id": "ml-robustness-ood",
+      "name": "ML Robustness & Out-of-Distribution Behaviour",
+      "cluster": "Quality: Reliability & Resilience",
+      "risk_default": "none"
+    },
+    {
+      "id": "predictability-determinism",
+      "name": "Predictability & Determinism",
+      "cluster": "Quality: Reliability & Resilience",
+      "risk_default": "none"
+    },
+    {
+      "id": "rate-limiting-backpressure",
+      "name": "Rate Limiting, Quotas & Backpressure",
+      "cluster": "Quality: Reliability & Resilience",
+      "risk_default": "none"
+    },
+    {
+      "id": "recoverability",
+      "name": "Recoverability (State/Data After Failure)",
+      "cluster": "Quality: Reliability & Resilience",
+      "risk_default": "none"
+    },
+    {
+      "id": "accountability",
+      "name": "Accountability (Audit Trail)",
+      "cluster": "Quality: Security",
+      "risk_default": "if-in-scope"
+    },
+    {
+      "id": "authenticity",
+      "name": "Authenticity (Identity/Origin Verification)",
+      "cluster": "Quality: Security",
+      "risk_default": "if-in-scope"
+    },
+    {
+      "id": "authorization-access-control",
+      "name": "Authorization & Access-Control Model (Roles/Permissions/Policy)",
+      "cluster": "Quality: Security",
+      "risk_default": "by-default"
+    },
+    {
+      "id": "confidentiality",
+      "name": "Confidentiality",
+      "cluster": "Quality: Security",
+      "risk_default": "by-default"
+    },
+    {
+      "id": "data-privacy",
+      "name": "Data Privacy / PII Handling",
+      "cluster": "Quality: Security",
+      "risk_default": "by-default"
+    },
+    {
+      "id": "identity-auth-session",
+      "name": "Identity / Auth & Session",
+      "cluster": "Quality: Security",
+      "risk_default": "by-default"
+    },
+    {
+      "id": "integrity",
+      "name": "Integrity (Data/State)",
+      "cluster": "Quality: Security",
+      "risk_default": "by-default"
+    },
+    {
+      "id": "non-repudiation",
+      "name": "Non-repudiation",
+      "cluster": "Quality: Security",
+      "risk_default": "if-in-scope"
+    },
+    {
+      "id": "resistance",
+      "name": "Resistance to Attack",
+      "cluster": "Quality: Security",
+      "risk_default": "by-default"
+    },
+    {
+      "id": "secrets-key-management",
+      "name": "Secrets & Key Management",
+      "cluster": "Quality: Security",
+      "risk_default": "by-default"
+    },
+    {
+      "id": "tenancy-isolation",
+      "name": "Tenancy & Data Isolation",
+      "cluster": "Quality: Security",
+      "risk_default": "by-default"
+    },
+    {
+      "id": "fail-safe",
+      "name": "Fail-Safe State",
+      "cluster": "Quality: Safety",
+      "risk_default": "if-in-scope"
+    },
+    {
+      "id": "hazard-warning",
+      "name": "Hazard Warning",
+      "cluster": "Quality: Safety",
+      "risk_default": "if-in-scope"
+    },
+    {
+      "id": "ml-output-safety-guardrails",
+      "name": "ML Output Safety & Guardrails",
+      "cluster": "Quality: Safety",
+      "risk_default": "by-default"
+    },
+    {
+      "id": "operational-constraint",
+      "name": "Safety Operational Constraint",
+      "cluster": "Quality: Safety",
+      "risk_default": "if-in-scope"
+    },
+    {
+      "id": "risk-identification",
+      "name": "Safety Risk Identification",
+      "cluster": "Quality: Safety",
+      "risk_default": "if-in-scope"
+    },
+    {
+      "id": "safe-integration",
+      "name": "Safe Integration (System-of-Systems)",
+      "cluster": "Quality: Safety",
+      "risk_default": "if-in-scope"
+    },
+    {
+      "id": "trust-safety-abuse-moderation",
+      "name": "Trust & Safety: Abuse, Fraud & Content Moderation",
+      "cluster": "Quality: Safety",
+      "risk_default": "none"
+    },
+    {
+      "id": "adaptability",
+      "name": "Adaptability (to New Environments)",
+      "cluster": "Quality: Maintainability & Flexibility",
+      "risk_default": "none"
+    },
+    {
+      "id": "analysability",
+      "name": "Analysability / Diagnosability",
+      "cluster": "Quality: Maintainability & Flexibility",
+      "risk_default": "none"
+    },
+    {
+      "id": "browser-device-compat",
+      "name": "Browser & Device Compatibility Matrix",
+      "cluster": "Quality: Maintainability & Flexibility",
+      "risk_default": "none"
+    },
+    {
+      "id": "cli-shell-os-compat",
+      "name": "Shell & OS Compatibility",
+      "cluster": "Quality: Maintainability & Flexibility",
+      "risk_default": "none"
+    },
+    {
+      "id": "configurability",
+      "name": "Configurability",
+      "cluster": "Quality: Maintainability & Flexibility",
+      "risk_default": "none"
+    },
+    {
+      "id": "dependency-footprint",
+      "name": "Dependency Footprint (Consumer Impact)",
+      "cluster": "Quality: Maintainability & Flexibility",
+      "risk_default": "none"
+    },
+    {
+      "id": "extensibility",
+      "name": "Extensibility",
+      "cluster": "Quality: Maintainability & Flexibility",
+      "risk_default": "none"
+    },
+    {
+      "id": "installability",
+      "name": "Installability",
+      "cluster": "Quality: Maintainability & Flexibility",
+      "risk_default": "none"
+    },
+    {
+      "id": "modifiability",
+      "name": "Modifiability / Maintainability",
+      "cluster": "Quality: Maintainability & Flexibility",
+      "risk_default": "none"
+    },
+    {
+      "id": "modularity",
+      "name": "Modularity",
+      "cluster": "Quality: Maintainability & Flexibility",
+      "risk_default": "none"
+    },
+    {
+      "id": "packaging-distribution",
+      "name": "Packaging & Distribution",
+      "cluster": "Quality: Maintainability & Flexibility",
+      "risk_default": "none"
+    },
+    {
+      "id": "portability",
+      "name": "Portability (Platforms/Runtimes)",
+      "cluster": "Quality: Maintainability & Flexibility",
+      "risk_default": "none"
+    },
+    {
+      "id": "replaceability",
+      "name": "Replaceability (Drop-in)",
+      "cluster": "Quality: Maintainability & Flexibility",
+      "risk_default": "none"
+    },
+    {
+      "id": "reusability",
+      "name": "Reusability",
+      "cluster": "Quality: Maintainability & Flexibility",
+      "risk_default": "none"
+    },
+    {
+      "id": "scalability",
+      "name": "Scalability & Capacity Planning",
+      "cluster": "Quality: Maintainability & Flexibility",
+      "risk_default": "none"
+    },
+    {
+      "id": "serviceability",
+      "name": "Serviceability / Supportability",
+      "cluster": "Quality: Maintainability & Flexibility",
+      "risk_default": "none"
+    },
+    {
+      "id": "testability",
+      "name": "Testability",
+      "cluster": "Quality: Maintainability & Flexibility",
+      "risk_default": "none"
+    },
+    {
+      "id": "analytics-instrumentation",
+      "name": "Analytics & Product Instrumentation",
+      "cluster": "Operational & Lifecycle",
+      "risk_default": "none"
+    },
+    {
+      "id": "backfill-reprocessing",
+      "name": "Backfill, Reprocessing & Replay",
+      "cluster": "Operational & Lifecycle",
+      "risk_default": "none"
+    },
+    {
+      "id": "backup-disaster-recovery",
+      "name": "Backup & Disaster Recovery (RTO/RPO)",
+      "cluster": "Operational & Lifecycle",
+      "risk_default": "by-default"
+    },
+    {
+      "id": "build-ci-cd",
+      "name": "Build & CI/CD Pipeline",
+      "cluster": "Operational & Lifecycle",
+      "risk_default": "none"
+    },
+    {
+      "id": "deployment-infrastructure",
+      "name": "Deployment & Infrastructure",
+      "cluster": "Operational & Lifecycle",
+      "risk_default": "none"
+    },
+    {
+      "id": "documentation-runbooks",
+      "name": "Operator Documentation & Runbooks",
+      "cluster": "Operational & Lifecycle",
+      "risk_default": "none"
+    },
+    {
+      "id": "environments-configuration",
+      "name": "Environments, Config & Promotion",
+      "cluster": "Operational & Lifecycle",
+      "risk_default": "none"
+    },
+    {
+      "id": "feature-flagging",
+      "name": "Feature Flagging",
+      "cluster": "Operational & Lifecycle",
+      "risk_default": "none"
+    },
+    {
+      "id": "infra-idempotent-provisioning",
+      "name": "Idempotent / Declarative Provisioning",
+      "cluster": "Operational & Lifecycle",
+      "risk_default": "none"
+    },
+    {
+      "id": "infra-state-drift-detection",
+      "name": "IaC State Management & Drift Detection",
+      "cluster": "Operational & Lifecycle",
+      "risk_default": "none"
+    },
+    {
+      "id": "ml-drift-monitoring",
+      "name": "Model & Data Drift Monitoring",
+      "cluster": "Operational & Lifecycle",
+      "risk_default": "none"
+    },
+    {
+      "id": "ml-reproducibility",
+      "name": "ML Reproducibility & Experiment Tracking",
+      "cluster": "Operational & Lifecycle",
+      "risk_default": "none"
+    },
+    {
+      "id": "observability-telemetry",
+      "name": "Observability (Logging / Metrics / Tracing)",
+      "cluster": "Operational & Lifecycle",
+      "risk_default": "none"
+    },
+    {
+      "id": "regression-safety-change-isolation",
+      "name": "Regression Safety / Change Isolation on an Existing System",
+      "cluster": "Operational & Lifecycle",
+      "risk_default": "none"
+    },
+    {
+      "id": "rollout-rollback-release-strategy",
+      "name": "Rollout / Rollback & Blast Radius",
+      "cluster": "Operational & Lifecycle",
+      "risk_default": "none"
+    },
+    {
+      "id": "testing-strategy-test-data",
+      "name": "Testing Strategy & Test Data",
+      "cluster": "Operational & Lifecycle",
+      "risk_default": "none"
+    },
+    {
+      "id": "cli-config-precedence",
+      "name": "Config Precedence & Env Handling",
+      "cluster": "Constraints, Risk & Governance",
+      "risk_default": "none"
+    },
+    {
+      "id": "constraints-tradeoffs",
+      "name": "Constraints & Pre-Decided Tradeoffs",
+      "cluster": "Constraints, Risk & Governance",
+      "risk_default": "none"
+    },
+    {
+      "id": "cost-budget",
+      "name": "Cost, Budget & Quotas",
+      "cluster": "Constraints, Risk & Governance",
+      "risk_default": "none"
+    },
+    {
+      "id": "data-residency-sovereignty",
+      "name": "Data Residency, Sovereignty & Cross-Border Transfer",
+      "cluster": "Constraints, Risk & Governance",
+      "risk_default": "by-default"
+    },
+    {
+      "id": "data-retention-lifecycle",
+      "name": "Data Retention, Erasure & Lifecycle",
+      "cluster": "Constraints, Risk & Governance",
+      "risk_default": "by-default"
+    },
+    {
+      "id": "dependency-supply-chain",
+      "name": "Dependency & Supply-Chain Security",
+      "cluster": "Constraints, Risk & Governance",
+      "risk_default": "by-default"
+    },
+    {
+      "id": "implementation-requirements",
+      "name": "Implementation Requirements (Mandated Tech Stack)",
+      "cluster": "Constraints, Risk & Governance",
+      "risk_default": "by-default"
+    },
+    {
+      "id": "library-licensing-attribution",
+      "name": "Licensing & Attribution",
+      "cluster": "Constraints, Risk & Governance",
+      "risk_default": "by-default"
+    },
+    {
+      "id": "ml-bias-fairness",
+      "name": "ML Bias & Fairness Evaluation",
+      "cluster": "Constraints, Risk & Governance",
+      "risk_default": "by-default"
+    },
+    {
+      "id": "ml-explainability",
+      "name": "ML Explainability & Interpretability",
+      "cluster": "Constraints, Risk & Governance",
+      "risk_default": "none"
+    },
+    {
+      "id": "physical-requirements",
+      "name": "Physical / Hardware-Environment Requirements",
+      "cluster": "Constraints, Risk & Governance",
+      "risk_default": "none"
+    },
+    {
+      "id": "regulatory-compliance-consent",
+      "name": "Regulatory / Legal Compliance & Consent",
+      "cluster": "Constraints, Risk & Governance",
+      "risk_default": "by-default"
+    },
+    {
+      "id": "static-vs-dynamic-hosting-model",
+      "name": "Hosting / Runtime Model (Static vs Dynamic, Backend Presence)",
+      "cluster": "Constraints, Risk & Governance",
+      "risk_default": "none"
+    }
+  ]
+}

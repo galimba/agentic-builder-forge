@@ -1,0 +1,22 @@
+# Typos configuration
+# See: https://github.com/crate-ci/typos
+
+[default.extend-words]
+# Domain-specific terms that are NOT typos
+agentic = "agentic"
+ratify = "ratify"
+worktree = "worktree"
+worktrees = "worktrees"
+devcontainer = "devcontainer"
+beads = "beads"
+bd = "bd"
+
+[files]
+# Fixtures and generated files carry deliberate short tokens; lockfiles are generated
+extend-exclude = [
+    ".git/",
+    "node_modules/",
+    "pnpm-lock.yaml",
+    "tests/*/fixtures/",
+    "*.json",
+]

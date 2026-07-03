@@ -1,0 +1,39 @@
+name: Bug Report
+description: Report a defect in the harness template
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Bugs in your OWN initialized
+        instance's specs/tasks belong in your instance's tracker — this template
+        repo tracks defects in the mechanism itself.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. bash .forge/scripts/init.sh with values ...
+        2. ./harness/run-task.sh ...
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Doctor + gate output
+      description: Output of `bash .forge/scripts/doctor.sh` and the failing part of `bash tests/run-all.sh`
+      render: shell
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      placeholder: "OS, bash version, agent platform (claude-code/codex), bd version, docker yes/no"
+    validations:
+      required: true
