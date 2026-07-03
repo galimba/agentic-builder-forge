@@ -10,6 +10,18 @@ worktrees = "worktrees"
 devcontainer = "devcontainer"
 beads = "beads"
 bd = "bd"
+# Legitimate words + terse code abbreviations used in comments/fixtures (case-insensitive)
+unparseable = "unparseable"
+driveable = "driveable"
+allo = "allo"
+anc = "anc"
+agre = "agre"
+legac = "legac"
+aspec = "aspec"
+mis = "mis"
+fpr = "fpr"
+nd = "nd"
+categor = "categor"
 
 [files]
 # Fixtures and generated files carry deliberate short tokens; lockfiles are generated

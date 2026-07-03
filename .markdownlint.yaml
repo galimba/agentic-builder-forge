@@ -3,12 +3,13 @@
 
 default: true
 
-# Line length: relaxed for readability (harness docs carry long rationale lines)
-MD013:
-  line_length: 200
-  code_blocks: false
-  tables: false
-  headings: false
+# Line length: off — the README and harness docs intentionally carry long single-line
+# prose paragraphs and long inline rationale that are not meant to be hard-wrapped.
+MD013: false
+
+# Emphasis-as-heading: off — some docs/skills use bold labels (e.g. "**1. Frontend rendering**")
+# as inline emphasis within lists/examples, not as section headings.
+MD036: false
 
 # Allow inline HTML (structured marker blocks like <!-- forge:tasks:begin v1 --> are load-bearing)
 MD033: false

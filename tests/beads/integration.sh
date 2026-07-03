@@ -333,7 +333,7 @@ rc=$?
 # tests/integration; here we pin the LIFECYCLE change (no :166 fail-close, claim + container proceed). Real bring-up needs
 # docker — skip cleanly without it; FORGE_REQUIRE_DOCKER=1 makes the skip a hard fail.
 tinj fx-sb synthtarget
-if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1 && command -v devcontainer >/dev/null 2>&1; then
   out="$(FORGE_SANDBOX=1 FORGE_SANDBOX_IMAGE="${FORGE_SANDBOX_IMAGE:-mcr.microsoft.com/devcontainers/javascript-node:20}" FORGE_REPOS_CONFIG="$REPOSCFG" run "$RT" start fx-sb 2>&1)"
   rc=$?
   sbwt="$(jq -r '.worktree // empty' "$SENT" 2>/dev/null)"
@@ -343,9 +343,9 @@ if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
   run "$KS" >/dev/null 2>&1 # release the bead + tear the container down so the next test starts clean
   docker ps -aq --filter "label=devcontainer.local_folder=$sbwt" 2>/dev/null | xargs -r docker rm -f >/dev/null 2>&1
 elif [ "${FORGE_REQUIRE_DOCKER:-0}" = "1" ]; then
-  fail "FORGE_SANDBOX=1 target container-open REQUIRED on this gate (FORGE_REQUIRE_DOCKER=1; docker absent)"
+  fail "FORGE_SANDBOX=1 target container-open REQUIRED on this gate (FORGE_REQUIRE_DOCKER=1; docker/devcontainer absent)"
 else
-  skip "FORGE_SANDBOX=1 target container-open — docker absent (covered in tests/integration)"
+  skip "FORGE_SANDBOX=1 target container-open — docker/devcontainer CLI absent (covered in tests/integration)"
 fi
 
 # --- forge-named SELF build (target_repo == the forge's OWN name) -> SELF, NOT a target / fail-closed ---

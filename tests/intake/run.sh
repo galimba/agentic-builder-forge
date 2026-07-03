@@ -12,6 +12,10 @@
 # enforces them; the candidate was retired) — see the seam block below; fail-closed if
 # the deployed harness ever stops rejecting a fields-missing spec.
 set -u
+# The convert/mint half of this suite mints real beads — bd is a hard prerequisite. SKIP honestly
+# (rc 75, the gate's SKIP protocol) instead of failing on boxes without beads installed. Provision
+# bd in CI to exercise the full intake→convert path (see .github/workflows/ci.yml).
+command -v bd >/dev/null 2>&1 || { echo "intake: SKIP — bd (beads) required for the convert/mint tests"; exit 75; }
 # Fixtures must never prompt — on a TTY stdin, plain `bd init` blocks on the contributor
 # wizard. Per-call flags are primary; this env is the backstop for future fixtures.
 export BD_NON_INTERACTIVE=1
