@@ -74,6 +74,6 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
-      - uses: crate-ci/typos@02ea592e44b3a53c302f697cddca7641cd051c3d  # v1
+      - uses: crate-ci/typos@bee27e3a4fd1ea2111cf90ab89cd076c870fce14  # v1
         with:
           config: "_typos.toml"
