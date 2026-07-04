@@ -165,11 +165,13 @@ Both fail closed; neither opens a hole.
 
 - **The container is off by default in attended runs** — restated here because it governs §2's whole
   backstop column. Attended, the human merge is the completeness boundary.
-- **No server-side branch protection.** "Agents never merge / never push `main`" is enforced against
-  the agent's *tool calls*. There is no `gh pr merge` deny rule and no git pre-*push* hook, so a build
-  agent's Bash `gh pr merge` is not mechanically blocked, and a human with a terminal is trusted. The
-  reviewer *role* is mechanically merge-incapable (tool ceiling). Configure branch protection on your
-  hosting platform if you want a server-side guarantee.
+- **Client-side capability denies, not server-side branch protection.** "Agents never merge / never
+  push `main`" is enforced against the agent's *tool calls*. The deny hook now denies the agent's Bash
+  `gh pr merge` (plus repo-admin / secret / auth / workflow / `gh api` write paths) as a bounded
+  **client-side capability boundary** — defense-in-depth, **not** server-side branch protection. There is
+  still no git pre-*push* hook, and a human with a terminal (a non-agent shell / the GitHub UI, invisible
+  to this hook) is still trusted. The reviewer *role* is additionally mechanically merge-incapable (tool
+  ceiling). Configure branch protection on your hosting platform if you want a server-side guarantee.
 - **`intake.sh clarify` and `abort` are not TTY-gated** — unlike `ratify`, they are agent-invocable.
   This is convention, not mechanism; but `clarify` only lifts the question budget and `abort` only
   destroys intake state — neither forges a human sign-off.

@@ -136,9 +136,10 @@ produces no output posts an honest "review did not run" notice rather than a cle
 ### Stage 5 — Merge — HUMAN
 
 The human reviews the tests and the advisory findings and merges on GitHub. **The Forge never
-merges.** For the build agent this is convention (there is no `gh pr merge` deny rule and no
-server-side branch protection); for the reviewer role it is mechanical (its tool ceiling has no way
-to merge). The merge is the release decision and the ultimate backstop for everything the deny hook
+merges.** The agent's Bash `gh pr merge` is now denied by the deny hook (a bounded client-side
+capability boundary — defense-in-depth, not server-side branch protection; a human in a non-agent shell /
+the GitHub UI is still trusted); for the reviewer role merge-incapability is mechanical (its tool ceiling
+has no way to merge). The merge is the release decision and the ultimate backstop for everything the deny hook
 concedes.
 
 ### Stage 6 — Reconcile / close — AUTOMATED
