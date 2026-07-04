@@ -35,10 +35,10 @@ by relaxing the loop.
   follow the same workflow bounded by the git hooks and the fail-closed harness scripts, but
   the real-time hook floor is built around Claude Code. Hook syntax moves — re-verify against
   current Claude Code docs when touching the floor.
-- **Blast-radius control.** One git worktree per task; optionally an isolation container
-  around the build (opt-in today, shipped manifest `--network none`; the Forge is being
-  aligned toward networked, container-default target-repo execution as a later topology
-  change — see `docs/limitations.md`). The shared checkout is never edited directly.
+- **Blast-radius control.** One git worktree per task; a networked isolation container around the
+  build by default for target-repo builds (`FORGE_SANDBOX_NETWORK=none` restores egress-deny; attended
+  self-build runs host-side — see `docs/limitations.md`). The container is workspace isolation, not
+  egress control. The shared checkout is never edited directly.
 - **Budgets and limits live in code**, not in prompts (see `harness/intake.config` for
   clarify/restate budgets).
 - **Config-driven commands.** Test/lint/format commands are read from per-target config,
@@ -54,8 +54,8 @@ by relaxing the loop.
 2. **Decompose** — the ratified spec becomes beads in the task ledger (`bd`,
    `harness/beads.config`).
 3. **Build** — `harness/run-task.sh` claims a bead and builds in an isolated git worktree,
-   optionally inside a network-none container sandbox; the tests/lint/format gates enforce
-   green throughout.
+   inside a networked isolation container by default for target builds; the tests/lint/format
+   gates enforce green throughout.
 4. **Finish** — the run ends by opening a pull request. It never merges.
 5. **Review** — `harness/review-task.sh`: an advisory read-only reviewer
    (`harness/reviewers.config`) posts findings as a plain PR comment.

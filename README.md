@@ -15,7 +15,7 @@ The Forge is **Claude-Code-first**: its real-time enforcement — the `PreToolUs
 For one unit of work, the harness:
 
 1. **Intake** — turns a fuzzy objective into a spec through a bounded clarify loop, which a **human ratifies**, then decomposes it into **beads** (the task ledger, `bd` — the single source of truth).
-2. **Build** — `run-task.sh` claims a bead, creates an isolated worktree on a task branch (optionally inside an isolation container — opt-in today; see [The Honest Boundary](#the-honest-boundary)), and drives a test-first loop.
+2. **Build** — `run-task.sh` claims a bead, creates an isolated worktree on a task branch (inside a networked isolation container by default for target builds; see [The Honest Boundary](#the-honest-boundary)), and drives a test-first loop.
 3. **Gate** — auto-format and lint on every write; a Stop gate that refuses "done" while tests are red. The canonical gate is `tests/run-all.sh`.
 4. **Finish** — commits, pushes the task branch, opens a **pull request**. Never merges, never pushes the default branch.
 5. **Review** — a read-only, structurally separated reviewer posts **advisory** findings as a plain PR comment — never a blocking review.
@@ -66,7 +66,7 @@ New here? Start with [`docs/getting-started.md`](docs/getting-started.md), which
 
 - **Deterministic enforcement floor** — `PreToolUse` deny hook blocks a fixed set of destructive command shapes (out-of-sandbox `rm -rf`, force-push, push/commit to the default branch, `--no-verify`, secret-shaped literals, self-edits of the enforcement files). Broken or unparseable hooks deny; they never wave work through.
 - **Test-gated completion** — the Stop gate blocks "done" on red tests; `tests/run-all.sh` is the canonical verdict (PASS / SKIP / FAIL, fail-closed).
-- **Isolated execution** — every task runs in its own git worktree on its own branch; unattended runs run inside a `--network none` isolation container (**required** — `FORGE_SANDBOX=1`) with read-only mounts of the enforcement files, and attended runs can opt in.
+- **Isolated execution** — every task runs in its own git worktree on its own branch; target-repo builds run inside a **networked** isolation container by default (unattended runs require `FORGE_SANDBOX=1`; attended self-build stays host-side) with read-only mounts of the enforcement files. Set `FORGE_SANDBOX_NETWORK=none` to restrict egress.
 - **Ledger-driven work** — every unit of work is a bead; the human merge is what closes it, reconciled mechanically from the PR record.
 - **Human-ratified intake** — a clarify loop with mechanical depth/coverage floors turns objectives into specs a human signs off on before any bead is minted.
 - **Advisory review, pluggable backends** — the reviewer runs read-only against the PR diff and posts findings as a comment; backends: local `ollama`, a fresh `claude` CLI session, or `codex`.
@@ -83,7 +83,7 @@ New here? Start with [`docs/getting-started.md`](docs/getting-started.md), which
 | Beads (`bd`) | the task ledger | **load-bearing** — the task lifecycle cannot run without it; the bd-dependent suites SKIP honestly if absent. Installed separately; `init.sh` pins the binary path and version. |
 | GitHub CLI (`gh`) | the PR flow and the optional oversight board | authenticated |
 | A reviewer backend | advisory PR review | one of: `ollama` with a pulled model, the `claude` CLI, or the `codex` CLI — model names in `harness/reviewers.config` are **examples you must provision** |
-| Docker + devcontainer CLI | *optional* | only for the isolation container (opt-in today; required for unattended runs) |
+| Docker + devcontainer CLI | *for container builds* | the isolation container is the default for target builds and required for unattended runs (attended self-build runs host-side) |
 
 ## What's Included
 
@@ -120,12 +120,13 @@ The defaults encode one working shape of the harness; every seam you're meant to
 
 The floor is deny-by-default hooks plus a self-minting session witness — it deterministically blocks the enumerated dangerous shapes, but it is a **guardrail / tripwire**, not complete confinement: a textual classifier of tool calls, **not an airtight sandbox against a determined adversary**. The isolation container raises the blast-radius floor (workspace / filesystem / process isolation), but it is **not airtight either** — even a networked container would not by itself prevent credential misuse, GitHub-authority misuse, exfiltration, or target-repo mutation. The one always-present release boundary is the **human merge**. The reviewer is **optional and advisory by design** — its findings never gate a merge. The test gate is the sole mechanical completion authority: no run reaches a PR while tests are red. And humans hold both ends of the loop — a human ratifies every spec at intake, and a human merges every PR. Read [`docs/limitations.md`](docs/limitations.md) before relying on the Forge for anything security-sensitive; it enumerates what is mechanically enforced, what is best-effort, and what is convention.
 
-**Container model (current vs. direction).** Today the isolation container is **opt-in** and the shipped
-manifest uses `--network none`: an attended self-build runs containerless unless `FORGE_SANDBOX=1`; an
-attended target build unless `FORGE_TARGET_REQUIRE_CONTAINER=1`; a non-attended run is refused without
-`FORGE_SANDBOX=1`. The Forge is being aligned toward **networked, container-default target-repo
-execution**; that flip will land as its own topology change together with a matching `limitations.md`
-update, reframing the container from "network egress denied" to "workspace isolation, not egress control."
+**Container model.** Target-repo builds run in a **networked isolation container by default**
+(`FORGE_TARGET_CONTAINER=1`; the legacy `FORGE_TARGET_REQUIRE_CONTAINER=1` is honored). Unattended runs
+require it (`FORGE_SANDBOX=1`); an attended **self-build / Forge-maintenance** runs host-side — a
+documented high-trust exception. The container is **workspace isolation, not egress control**: it is
+networked (`FORGE_SANDBOX_NETWORK=bridge`; set `none` to restore egress-deny), so it bounds
+filesystem/process blast radius but does **not** prevent network exfiltration — what it enforces is the
+read-only enforcement mounts, dropped caps, and an unprivileged user.
 
 ## Documentation
 

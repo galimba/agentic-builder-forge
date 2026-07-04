@@ -13,17 +13,19 @@ The harness reads behavior from environment variables, never from prompt text. T
 
 ### Confinement and autonomy
 
-The isolation container is **opt-in today** and the shipped manifest uses `--network none` — it is
-workspace/filesystem/process isolation, **not** an airtight sandbox, and not the release boundary (the
-human merge is). The settled direction is networked, container-default target-repo execution; that
-topology change lands separately with a matching `limitations.md` rewrite. The knobs below control the
-**current** behavior.
+The isolation container is **networked by default** and is the **default for target-repo builds**
+(attended self-build / Forge-maintenance stays host-side — a documented exception). It is
+workspace/filesystem/process isolation, **not** an airtight sandbox and **not** egress control (a
+networked container does not prevent exfiltration), and not the release boundary (the human merge is).
+Set `FORGE_SANDBOX_NETWORK=none` to restore container-level egress-deny. The knobs below control this.
 
 | Variable | Default | Effect |
 | --- | --- | --- |
 | `FORGE_UNATTENDED` | unset (attended) | Marks a run as unattended. Turns the Stop tests-gate into never-release-on-red, makes the witness gate a hard refusal, makes the test gate strict (SKIPs count as failures), and enables the out-of-band container reaper on `start`. A non-attended `start` is **refused** unless `FORGE_SANDBOX=1`. |
-| `FORGE_SANDBOX` | `0` | `1` brings up the OS confinement container at `start`. **Mandatory for any non-attended run.** In an attended run the container is off unless you set this. |
-| `FORGE_TARGET_REQUIRE_CONTAINER` | `0` | `1` brings up the container for an *attended target build* (opt-in). Self builds and attended runs are otherwise containerless. |
+| `FORGE_SANDBOX` | `0` | `1` brings up the OS isolation container at `start`. **Mandatory for any non-attended run.** For an attended **self-build** the container is off unless you set this (the host-side maintenance exception); attended **target** builds are containerized by default (see `FORGE_TARGET_CONTAINER`). |
+| `FORGE_TARGET_CONTAINER` | `1` | Target-repo builds run in a container by default. `0` opts a target build out to host-side. |
+| `FORGE_TARGET_REQUIRE_CONTAINER` | `1` | Legacy alias for `FORGE_TARGET_CONTAINER` (honored for back-compat). |
+| `FORGE_SANDBOX_NETWORK` | `bridge` | Container network. `bridge` (networked, the default) lets the agent reach registries / GitHub / docs; `none` restores egress-deny (workspace isolation without network). |
 | `FORGE_REQUIRE_ROOT` | `0` | `1` upgrades the "not at repo root" warning to a hard refusal. Autonomous intake forces this on. |
 | `FORGE_SANDBOX_IMAGE` | `mcr.microsoft.com/devcontainers/javascript-node:20` | Container image. |
 | `FORGE_SANDBOX_MANIFEST` | the shipped `devcontainer.json` | Override seam for the container manifest. |
@@ -158,8 +160,9 @@ one up:
 3. **Start it.** `./harness/run-task.sh start <bead-id>`. The harness classifies it as a target build
    (distinct git store), worktrees the *target* repo, sets the deny-hook confinement to that work
    root, and keeps the ledger, PR, and floor Forge-side.
-4. **Container (optional).** Attended target builds run containerless unless you set
-   `FORGE_TARGET_REQUIRE_CONTAINER=1`. For unattended target builds `FORGE_SANDBOX=1` is mandatory.
+4. **Container (default for target builds).** Attended target builds run in a **networked isolation
+   container by default** (`FORGE_TARGET_CONTAINER=0` opts out to host-side; `FORGE_SANDBOX_NETWORK=none`
+   restores egress-deny). Unattended target builds require `FORGE_SANDBOX=1`.
 5. **Finish** strips any Forge artifacts and asserts the target PR is pristine before committing.
 
 Feature builds (multiple beads sharing a `source_spec`) assemble onto one `feat/<spec-slug>` branch

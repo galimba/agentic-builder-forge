@@ -25,10 +25,10 @@ notes live in `CODEX.md`.
   `bd`. Raw writes and shell redirects into `.beads/**` are denied; `bd` commands and *reads* of
   the ledger are allowed.
 - **Stay in the sandbox.** During a task run, write only inside the task's worktree (and
-  `sandbox/` in this repo). A run may execute inside an isolation container (opt-in today; the
-  shipped manifest uses `--network none`, so while it stays network-none do not try to reach the
-  network from inside it). The container is workspace isolation, **not** an airtight sandbox — the
-  hard rules above hold whether or not a container is present.
+  `sandbox/` in this repo). A target-repo build runs inside a **networked** isolation container by
+  default. The container is workspace isolation, **not** an airtight sandbox and **not** egress
+  control — the hard rules above hold whether or not a container is present, and a networked container
+  does not license exfiltration or reaching services you are not authorized to use.
 - **No destructive commands:** no `rm -rf` outside the sandbox, no force-push, no writes to
   `.git/`.
 - **No secrets** in code or shell commands (API keys, tokens, private keys).
