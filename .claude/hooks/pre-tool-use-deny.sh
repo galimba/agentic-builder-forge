@@ -39,7 +39,7 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # is caught, closing the same fail-open shape the keystone exists to reject. (multi-arg `command -v` is
 # unsafe — it returns 0 if ANY name resolves — so AND two single-name checks.) Fires ONLY on a genuine
 # load failure; a present valid lib.sh is byte-identical normal operation.
-command -v forge_deny >/dev/null 2>&1 && command -v forge_check_git >/dev/null 2>&1 && command -v forge_check_bd >/dev/null 2>&1 || { printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"agentic-builder-forge: BLOCKED — deny-floor lib.sh missing or partially loaded (fail closed)"}}\n'; exit 2; }
+command -v forge_deny >/dev/null 2>&1 && command -v forge_check_git >/dev/null 2>&1 && command -v forge_check_bd >/dev/null 2>&1 && command -v forge_check_gh >/dev/null 2>&1 || { printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"agentic-builder-forge: BLOCKED — deny-floor lib.sh missing or partially loaded (fail closed)"}}\n'; exit 2; }
 # Fail-closed (LOW): jq is the parser for every rule below — absent jq makes forge_json return empty
 # for the tool name / command / file path, and the whole hook would fall through to ALLOW. Refuse instead.
 command -v jq >/dev/null 2>&1 || { printf 'agentic-builder-forge: BLOCKED — jq not found on PATH; the deny hook cannot parse tool input (fail closed).\n' >&2; exit 2; }
@@ -223,6 +223,11 @@ if [ -n "$CMD" ]; then
   # closed). The reconcile SUBPROCESS close is invisible to PreToolUse (subprocess-exempt), so this over-
   # blocks zero automation; FORGE_ALLOW_BD_CLOSE=1 opens a supervised, actor-logged triage door.
   forge_check_bd "$CMD"
+
+  # gh (GitHub CLI) capability policy — deny pr merge / repo-admin / secrets / auth / workflow
+  # control / gh-api writes; allow benign reads + comments + gh pr create. Bounded capability
+  # boundary (no door; a human merges/administers in a non-agent shell / the GitHub UI). Phase 4.
+  forge_check_gh "$CMD"
 
   # recursive-force rm outside sandbox/
   forge_check_rm "$CMD"

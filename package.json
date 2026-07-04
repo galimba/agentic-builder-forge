@@ -57,7 +57,8 @@
     "test:fold29-hookspath-guard": "bash tests/boundary/fold29-hookspath-guard.sh",
     "test:fold30-multidigit-fd": "bash tests/boundary/fold30-multidigit-fd.sh",
     "test:fold19-gh": "bash tests/boundary/fold19-gh-convergence.sh",
-    "test:fold20-coldstart": "bash tests/boundary/fold20-bd-coldstart.sh"
+    "test:fold20-coldstart": "bash tests/boundary/fold20-bd-coldstart.sh",
+    "test:fold31-gh-capability-deny": "bash tests/boundary/fold31-gh-capability-deny.sh"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",

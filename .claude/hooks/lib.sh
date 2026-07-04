@@ -2126,6 +2126,166 @@ forge_check_bd_seg() {
   return 0
 }
 
+# ── gh (GitHub CLI) capability policy ────────────────────────────────────────────────────────────────
+# Deny the agent's DANGEROUS gh mutation surfaces — pr merge, repo-admin, secrets, auth, workflow control,
+# and gh-api write paths — while leaving every benign read/comment untouched (`gh pr view|diff|comment|
+# create|list|checks`, `gh repo view|list|clone`, `gh auth status`, `gh workflow list|view`, `gh api <GET>`,
+# `gh issue ...`). Mirrors forge_check_bd: a whole-command launder guard + a per-segment argv walker. This
+# closes the flagship capability hole — "agents never merge / never administer" was CONVENTION-ONLY (the
+# harness never CALLS `gh pr merge`; nothing stopped an agent's Bash from calling it). No door: a human
+# merges/administers in a NON-agent shell or the GitHub UI, invisible to this PreToolUse hook, so there is
+# nothing legitimate to open. CONCEDED (best-effort, documented): a `gh api` WRITE laundered through an
+# interpreter body the walker cannot see; gh-api GET enumeration of secret NAMES via an admin endpoint.
+forge_gh_deny() {
+  forge_deny "$1 — the GitHub merge/admin surface is a human capability: agents open PRs and comment, never merge or administer. Bounded capability deny (no door; a human acts in a non-agent shell / the GitHub UI, invisible to this hook)."
+}
+
+# forge_check_gh <cmd> — deny the agent's DIRECT dangerous gh subcommands. Mirrors forge_check_bd.
+forge_check_gh() {
+  local cmd="$1" seg
+  # Whole-command launder guard: a `gh <dangerous phrase>` laundered through a pipe-into-shell / eval /
+  # interpreter -c body the per-segment walker cannot see into (`bash -c 'gh pr merge X'`, `eval gh repo
+  # delete o/r`, `echo gh pr merge | bash`). Gate on the ADJACENT dangerous phrase so benign `gh pr view |
+  # cat`, `gh pr comment ... | tee` never over-block. `gh api` is DELIBERATELY excluded here (an api GET is
+  # benign and laundering it is not a mutation — api writes are caught by the per-segment walker; a laundered
+  # api write is the documented conceded gap). DEFENSE-IN-DEPTH: the per-segment walker is the load-bearing
+  # boundary.
+  if printf '%s' "$cmd" | grep -Eq '(^|[^A-Za-z0-9_.-])gh[[:space:]]+(pr[[:space:]]+merge|repo[[:space:]]+(delete|archive|unarchive|rename|edit|set-default|deploy-key|transfer)|secret([[:space:]]|$)|auth[[:space:]]+(login|logout|token|refresh|setup-git|switch)|workflow[[:space:]]+(enable|disable|run))([^A-Za-z0-9_-]|$)'; then
+    printf '%s' "$cmd" | grep -Eq '\|[[:space:]]*(sh|bash|dash|zsh|ksh|busybox|xargs|python[0-9.]*|node|perl|ruby)([[:space:]]|$)' && forge_gh_deny "a gh mutation verb piped into a shell/interpreter cannot be verified"
+    printf '%s' "$cmd" | grep -Eq '(^|[[:space:]])eval([[:space:]]|$)' && forge_gh_deny "a gh mutation verb via eval cannot be verified"
+    forge_interp_evalbody "$cmd" && forge_gh_deny "a gh mutation verb inside an interpreter -c/-e body cannot be verified"
+  fi
+  # Per-segment: split on && || ; | and a bare & (mirror forge_check_bd — protects the &-family redirects).
+  while IFS= read -r seg; do
+    forge_check_gh_seg "$seg"
+  done <<<"$(printf '%s' "$cmd" | sed -E 's/(\&\&|\|\||;|\|)/\n/g; s/&>>/\x01/g; s/&>/\x02/g; s/>&/\x03/g; s/&/\n/g; s/\x03/>\&/g; s/\x02/\&>/g; s/\x01/\&>>/g')"
+}
+
+forge_check_gh_seg() {
+  local seg="$1" _o
+  local -a toks=()
+  _o="$IFS"
+  set -f
+  IFS=$' \t\n' read -r -a toks <<<"$seg"
+  set +f
+  IFS="$_o"
+  local n="${#toks[@]}"
+  [ "$n" -gt 0 ] || return 0
+  forge_strip_group_close
+  [ "$n" -gt 0 ] || return 0
+
+  # Reach the command word past leading grouping/keyword/VAR=val/runner/exec/env/xargs tokens — copied
+  # VERBATIM from forge_check_bd_seg (shared grammar via bash dynamic scope on toks/n/i).
+  local i=0
+  while [ "$i" -lt "$n" ]; do
+    case "${toks[$i]}" in '('* | '{'*) toks[$i]="${toks[$i]#[({]}" ;; esac
+    case "${toks[$i]}" in
+      '' | '(' | '{' | '((' | '!' | then | do | else | elif | while | until) i=$((i + 1)) ;;
+      *=*) i=$((i + 1)) ;;
+      nohup | busybox) i=$((i + 1)) ;;
+      nice | stdbuf | setsid | ionice | time | command | doas | timeout | chrt | flock | strace | ltrace | fakeroot | valgrind | watch | eatmydata | taskset | chroot | setarch | numactl | setpriv | sudo) forge_skip_runner "${toks[$i]}" ;;
+      exec)
+        i=$((i + 1))
+        while [ "$i" -lt "$n" ]; do
+          case "${toks[$i]}" in
+            --) i=$((i + 1)); break ;;
+            -a) i=$((i + 2)) ;;
+            -c | -l | -cl | -lc) i=$((i + 1)) ;;
+            -*) forge_deny "exec with an unrecognized option cannot be verified — denied" ;;
+            *) break ;;
+          esac
+        done
+        ;;
+      env) forge_skip_env ;;
+      xargs)
+        i=$((i + 1))
+        while [ "$i" -lt "$n" ]; do
+          case "${toks[$i]}" in
+            -a | -d | -E | -I | -L | -n | -P | -s | --arg-file | --delimiter | --max-lines | --max-args | --max-procs | --max-chars | --replace | --eof) i=$((i + 2)) ;;
+            -*) i=$((i + 1)) ;;
+            *) break ;;
+          esac
+        done
+        ;;
+      *) break ;;
+    esac
+  done
+  [ "$i" -lt "$n" ] || return 0
+  local cw="${toks[$i]}" base
+  base="$(forge_basename "$cw")"
+
+  # NOTE — DELIBERATELY NO opaque-command-word arm (unlike forge_check_bd_seg). gh's dangerous verbs
+  # (edit / delete / merge / rename / token / switch / login / …) are COMMON English words, so scanning an
+  # opaque-`cw` segment (`$EDITOR merge`, `$BIN edit`, `git rebase && $VAR rename`) for them over-blocks
+  # benign commands wholesale. A variable-indirection front (`GH=gh; $GH pr merge`) is therefore a CONCEDED
+  # residual (documented) — the launder guard still catches the interpreter/eval/pipe forms, and this is the
+  # "do not chase every obfuscation" line. We act ONLY on a command word that literally resolves to `gh`.
+  [ "$base" = gh ] || return 0
+
+  # Skip gh GLOBAL persistent flags to the first non-flag token = the command GROUP. The only value-taking
+  # global is -R/--repo <owner/repo> (detached 2-token; glued -Rx / --repo=x are single -* tokens). All other
+  # persistent flags (--help/--version) are booleans caught by -*. Each candidate is forge_unquote'd first
+  # (a wholly-quoted group `gh "pr" merge` resolves to its executed value).
+  i=$((i + 1))
+  local group="" gtok
+  while [ "$i" -lt "$n" ]; do
+    gtok="$(forge_unquote "${toks[$i]}")"
+    case "$gtok" in
+      -R | --repo) i=$((i + 2)) ;;
+      -*) i=$((i + 1)) ;;
+      *) group="$gtok"; i=$((i + 1)); break ;;
+    esac
+  done
+  [ -n "$group" ] || return 0
+
+  # `gh api` has NO subcommand verb — the next operand is the endpoint. Deny only a MUTATING api call: an
+  # explicit write method (-X/--method POST|PUT|PATCH|DELETE), a field flag that forces POST
+  # (-f/-F/--field/--raw-field/--input). A bare `gh api <endpoint>` (GET read) is ALLOWED — the reviewer/
+  # agent REST read path. Known read value-takers (-H/-q/--jq/--template/-t/--hostname/--cache) skip their
+  # value 2-token so a header/jq value cannot be misread as a write flag.
+  if [ "$group" = api ]; then
+    local j="$i" atok m
+    while [ "$j" -lt "$n" ]; do
+      atok="$(forge_unquote "${toks[$j]}")"
+      case "$atok" in
+        -X | --method)
+          j=$((j + 1)); m=""; [ "$j" -lt "$n" ] && m="$(forge_unquote "${toks[$j]}")"
+          case "$(printf '%s' "$m" | tr '[:lower:]' '[:upper:]')" in POST | PUT | PATCH | DELETE) forge_gh_deny "gh api with a mutating method ($m) can merge/administer and is not allowed" ;; esac
+          j=$((j + 1)) ;;
+        -X*) case "$(printf '%s' "${atok#-X}" | tr '[:lower:]' '[:upper:]')" in POST | PUT | PATCH | DELETE) forge_gh_deny "gh api with a mutating method (${atok#-X}) can merge/administer and is not allowed" ;; esac; j=$((j + 1)) ;;
+        --method=*) case "$(printf '%s' "${atok#--method=}" | tr '[:lower:]' '[:upper:]')" in POST | PUT | PATCH | DELETE) forge_gh_deny "gh api with a mutating method (${atok#--method=}) can merge/administer and is not allowed" ;; esac; j=$((j + 1)) ;;
+        -f | -F | --field | --raw-field | --input) forge_gh_deny "gh api with a field/input body ($atok) forces a write and can merge/administer — not allowed" ;;
+        -f* | -F*) forge_gh_deny "gh api with a field body ($atok) forces a write and can merge/administer — not allowed" ;;
+        --field=* | --raw-field=* | --input=*) forge_gh_deny "gh api with a field/input body forces a write and can merge/administer — not allowed" ;;
+        -H | --header | -q | --jq | --template | -t | --hostname | --cache) j=$((j + 2)) ;;
+        *) j=$((j + 1)) ;;
+      esac
+    done
+    return 0
+  fi
+
+  # Non-api groups: find the VERB (first non-flag token after the group), skipping any interposed flags
+  # (incl. the -R/--repo value-taker). Unquote each so a wholly-quoted verb resolves to its executed value.
+  local verb="" vtok
+  while [ "$i" -lt "$n" ]; do
+    vtok="$(forge_unquote "${toks[$i]}")"
+    case "$vtok" in
+      -R | --repo) i=$((i + 2)) ;;
+      -*) i=$((i + 1)) ;;
+      *) verb="$vtok"; break ;;
+    esac
+  done
+  [ -n "$verb" ] || return 0
+
+  case "$group" in
+    pr) case "$verb" in merge) forge_gh_deny "gh pr merge is not allowed — agents never merge; a human merges the PR" ;; esac ;;
+    repo) case "$verb" in delete | archive | unarchive | rename | edit | set-default | deploy-key | transfer) forge_gh_deny "gh repo $verb is a repository-admin mutation and is not allowed" ;; esac ;;
+    secret) forge_gh_deny "gh secret $verb touches repository/org secrets and is not allowed for a build agent" ;;
+    auth) case "$verb" in login | logout | token | refresh | setup-git | switch) forge_gh_deny "gh auth $verb is a dangerous credential operation and is not allowed (gh auth status is allowed)" ;; esac ;;
+    workflow) case "$verb" in enable | disable | run) forge_gh_deny "gh workflow $verb controls CI execution and is not allowed" ;; esac ;;
+  esac
+  return 0
+}
 forge_check_git() {
   local cmd="$1" seg
   while IFS= read -r seg; do
