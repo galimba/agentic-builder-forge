@@ -7,10 +7,14 @@
 
 ## What the harness is
 
-A deterministic enforcement skeleton for agentic building: one backend takes one task,
-builds it in isolation under guardrails it cannot bypass, and ends in a pull request that
-only a human may merge. Everything larger — the task ledger, the intake loop, the advisory
-reviewer, the optional oversight board — is layered on that seed without weakening it.
+A deterministic, **Claude-Code-first** enforcement skeleton for agentic building: an agent
+takes one task at a time and builds it in isolation under mechanical guardrails, ending in a
+pull request that only a human may merge. The guardrails are a fail-closed **floor** — a
+deny-by-default tripwire that raises the cost of the dangerous shapes, not an airtight
+sandbox — and the human merge is the release boundary. The Forge is an **external** control
+repo: it operates on separate target repositories and never embeds itself into them.
+Everything larger — the task ledger, the intake loop, the advisory reviewer, the optional
+oversight board — is layered on that seed without weakening it.
 
 ## Why minimal
 
@@ -25,11 +29,16 @@ by relaxing the loop.
   advisory instructions. Prose is context; hooks are the contract.
 - **Fail-closed gates.** A gate that cannot evaluate denies. Every enforcement defect
   found so far fails in the closed (safe) direction, and new gates must too.
-- **Native enforcement.** Guardrails reuse the backend's own hook points (`PreToolUse`
-  deny, `PostToolUse` format, `Stop` gates), which fire in interactive and headless modes
-  alike. Hook syntax moves — re-verify against current backend docs when touching the floor.
-- **Blast-radius control.** One git worktree per task; optionally a network-none container
-  sandbox around the build. The shared checkout is never edited directly.
+- **Native enforcement, Claude-Code-first.** The real-time guardrails reuse **Claude Code's**
+  own hook points (`PreToolUse` deny, `PostToolUse` format, `Stop` gates, `SessionStart`
+  witness), which fire in interactive and headless modes alike. Other agents (e.g. Codex) can
+  follow the same workflow bounded by the git hooks and the fail-closed harness scripts, but
+  the real-time hook floor is built around Claude Code. Hook syntax moves — re-verify against
+  current Claude Code docs when touching the floor.
+- **Blast-radius control.** One git worktree per task; optionally an isolation container
+  around the build (opt-in today, shipped manifest `--network none`; the Forge is being
+  aligned toward networked, container-default target-repo execution as a later topology
+  change — see `docs/limitations.md`). The shared checkout is never edited directly.
 - **Budgets and limits live in code**, not in prompts (see `harness/intake.config` for
   clarify/restate budgets).
 - **Config-driven commands.** Test/lint/format commands are read from per-target config,

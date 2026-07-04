@@ -13,6 +13,12 @@ The harness reads behavior from environment variables, never from prompt text. T
 
 ### Confinement and autonomy
 
+The isolation container is **opt-in today** and the shipped manifest uses `--network none` — it is
+workspace/filesystem/process isolation, **not** an airtight sandbox, and not the release boundary (the
+human merge is). The settled direction is networked, container-default target-repo execution; that
+topology change lands separately with a matching `limitations.md` rewrite. The knobs below control the
+**current** behavior.
+
 | Variable | Default | Effect |
 | --- | --- | --- |
 | `FORGE_UNATTENDED` | unset (attended) | Marks a run as unattended. Turns the Stop tests-gate into never-release-on-red, makes the witness gate a hard refusal, makes the test gate strict (SKIPs count as failures), and enables the out-of-band container reaper on `start`. A non-attended `start` is **refused** unless `FORGE_SANDBOX=1`. |
@@ -94,9 +100,11 @@ invocation. It is not deterred by the floor; it is deterred by the loud audit re
 | `FORGE_ALLOW_BD_CLOSE=1` | An agent-mediated `bd close`/done-edge verb in-session. | `.harness/bd-close-escape.log` | A convenience triage door, not a necessity — normal closure is the reconcile subprocess. |
 | `FORGE_MECHGATE_ALLOW_LEGACY=1` | The acceptance gate passing a pre-contract bead (no `metadata.accept`). | the acceptance audit record (`legacy_bypass`) | Loud, audited; for beads minted before the acceptance contract existed. |
 
-These logs are ISO-42001-style evidence: explicit, attributable, never silent. Editing a hook through
-your terminal `$EDITOR` is outside Claude Code's permission system and is never blocked; the door is
-for edits made through an agent tool call.
+These logs are explicit, attributable, append-only audit evidence — never silent. They give you task
+provenance and an audit-friendly trail; map that to your own governance obligations as needed (the
+Forge names no certification regime and makes no compliance promise). Editing a hook through your
+terminal `$EDITOR` is outside Claude Code's permission system and is never blocked; the door is for
+edits made through an agent tool call.
 
 ## Runtime records
 
@@ -151,7 +159,7 @@ one up:
    (distinct git store), worktrees the *target* repo, sets the deny-hook confinement to that work
    root, and keeps the ledger, PR, and floor Forge-side.
 4. **Container (optional).** Attended target builds run containerless unless you set
-   `FORGE_TARGET_REQUIRE_CONTAINER=1`. For untended target builds `FORGE_SANDBOX=1` is mandatory.
+   `FORGE_TARGET_REQUIRE_CONTAINER=1`. For unattended target builds `FORGE_SANDBOX=1` is mandatory.
 5. **Finish** strips any Forge artifacts and asserts the target PR is pristine before committing.
 
 Feature builds (multiple beads sharing a `source_spec`) assemble onto one `feat/<spec-slug>` branch

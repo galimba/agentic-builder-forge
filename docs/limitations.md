@@ -21,6 +21,16 @@ merge is the actual backstop. This is a strong, defensible position — stated h
 credible than "unbypassable," which the enforcement library itself refuses to claim ("It is NOT
 airtight and does NOT claim to be").
 
+> **Direction (settled architecture, not yet shipped).** The Forge is being aligned toward
+> **networked, container-default target-repo execution**. When that lands — its own topology change —
+> the network/backstop framing in this document is rewritten *in the same change*: the container's role
+> becomes **workspace isolation, not egress control**, and the "container off by default in attended
+> runs" facts below change accordingly. Until then, everything in §§1–4 describes the **current**
+> implementation: an **opt-in** container (attended self-build via `FORGE_SANDBOX=1`; attended target
+> build via `FORGE_TARGET_REQUIRE_CONTAINER=1`; non-attended refused without `FORGE_SANDBOX=1`) whose
+> shipped manifest uses `--network none`. The deny floor is a **guardrail / tripwire** throughout —
+> never complete confinement — and the human merge is the release boundary in every configuration.
+
 ---
 
 ## 1. What is mechanically enforced
@@ -155,11 +165,13 @@ Both fail closed; neither opens a hole.
 
 - **The container is off by default in attended runs** — restated here because it governs §2's whole
   backstop column. Attended, the human merge is the completeness boundary.
-- **No server-side branch protection.** "Agents never merge / never push `main`" is enforced against
-  the agent's *tool calls*. There is no `gh pr merge` deny rule and no git pre-*push* hook, so a build
-  agent's Bash `gh pr merge` is not mechanically blocked, and a human with a terminal is trusted. The
-  reviewer *role* is mechanically merge-incapable (tool ceiling). Configure branch protection on your
-  hosting platform if you want a server-side guarantee.
+- **Client-side capability denies, not server-side branch protection.** "Agents never merge / never
+  push `main`" is enforced against the agent's *tool calls*. The deny hook now denies the agent's Bash
+  `gh pr merge` (plus repo-admin / secret / auth / workflow / `gh api` write paths) as a bounded
+  **client-side capability boundary** — defense-in-depth, **not** server-side branch protection. There is
+  still no git pre-*push* hook, and a human with a terminal (a non-agent shell / the GitHub UI, invisible
+  to this hook) is still trusted. The reviewer *role* is additionally mechanically merge-incapable (tool
+  ceiling). Configure branch protection on your hosting platform if you want a server-side guarantee.
 - **`intake.sh clarify` and `abort` are not TTY-gated** — unlike `ratify`, they are agent-invocable.
   This is convention, not mechanism; but `clarify` only lifts the question budget and `abort` only
   destroys intake state — neither forges a human sign-off.

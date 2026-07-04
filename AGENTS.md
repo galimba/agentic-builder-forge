@@ -1,11 +1,15 @@
 # Agent operating rules — agentic-builder-forge
 
-This repository is **the Forge**: a deterministic build harness for an agentic
-software-development lifecycle. These rules are stated here for humans and agents, but prose is
-not the boundary — they are enforced **mechanically** by the enforcement floor: the git hooks in
-`harness/githooks`, the fail-closed gates inside the `harness/*.sh` scripts, and (when the build
-agent is Claude Code) the hooks in `.claude/`. This file is the platform-neutral contract.
-Claude Code specifics live in `CLAUDE.md`; Codex notes live in `CODEX.md`.
+This repository is **the Forge**: a deterministic, **Claude-Code-first** control plane for an
+agentic software-development lifecycle. It is an **external** control repo — it operates on separate
+target repositories and never embeds itself into them. These rules are stated here for humans and
+agents, but prose is not the boundary — they are enforced **mechanically** by the enforcement floor:
+the git hooks in `harness/githooks`, the fail-closed gates inside the `harness/*.sh` scripts, and the
+real-time hooks in `.claude/`. **Real-time enforcement is Claude-Code-first**: the `.claude/` hooks are
+built around Claude Code and only load under it. This file states the rules platform-neutrally, but an
+agent that is not Claude Code (e.g. Codex) runs under a **weaker** floor — only the git hooks and the
+fail-closed scripts, not the real-time hook layer. Claude Code specifics live in `CLAUDE.md`; Codex
+notes live in `CODEX.md`.
 
 ## Hard rules (never violate)
 
@@ -21,8 +25,10 @@ Claude Code specifics live in `CLAUDE.md`; Codex notes live in `CODEX.md`.
   `bd`. Raw writes and shell redirects into `.beads/**` are denied; `bd` commands and *reads* of
   the ledger are allowed.
 - **Stay in the sandbox.** During a task run, write only inside the task's worktree (and
-  `sandbox/` in this repo). Runs may execute inside a network-none container sandbox — do not try
-  to reach the network from inside it.
+  `sandbox/` in this repo). A run may execute inside an isolation container (opt-in today; the
+  shipped manifest uses `--network none`, so while it stays network-none do not try to reach the
+  network from inside it). The container is workspace isolation, **not** an airtight sandbox — the
+  hard rules above hold whether or not a container is present.
 - **No destructive commands:** no `rm -rf` outside the sandbox, no force-push, no writes to
   `.git/`.
 - **No secrets** in code or shell commands (API keys, tokens, private keys).
@@ -32,10 +38,13 @@ Claude Code specifics live in `CLAUDE.md`; Codex notes live in `CODEX.md`.
 - Upstream of the build loop, **intake** (`harness/intake.sh`) turns a fuzzy objective into a
   ratified spec: a clarify loop within the budgets in `harness/intake.config`, then an explicit
   **human ratify**, then decomposition into beads. No beads are minted from an unratified spec.
-- **Work is a bead.** Bead IDs carry your ledger prefix (`{{BEAD_PREFIX}}`; examples in these docs
-  use `fx`, e.g. `fx-123`). Claim a *ready* bead before starting
+- **Work is a bead**, and beads are **architect-generated from a ratified spec** (intake →
+  `convert`) — that is the normal create path. Bead IDs carry your ledger prefix (`{{BEAD_PREFIX}}`;
+  examples in these docs use `fx`, e.g. `fx-123`). Claim a *ready* bead before starting
   (`./harness/run-task.sh start <bead-id>` — fails closed if it's missing, not ready, or already
-  claimed; `start --new "<desc>"` is the only create path).
+  claimed). `start --new "<desc>"` is the only *ad-hoc* create path in the build loop — a deliberate
+  exception for a quick single task; such a bead carries no acceptance contract, so it is not the
+  normal path.
 - One task → one git **worktree + branch**. The shared checkout is never modified directly.
 - **Test-first:** write a failing test, then code, until green. The canonical gate is
   `tests/run-all.sh` — it discovers every `test:*` script in `package.json`, reports
