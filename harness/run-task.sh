@@ -206,8 +206,9 @@ cmd_start() {
     _tc="$(realpath "$(git -C "$tpath" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" 2>/dev/null)"
     if [ -z "$_tc" ] || [ "$_tc" != "$_fc" ]; then
       repo="$tpath" # TARGET build (distinct git store)
-      # T1: target builds are CONTAINER-WIRED. OS confinement comes from the bring-up + liveness
-      # block below (FORGE_SANDBOX=1; or FORGE_TARGET_REQUIRE_CONTAINER=1 forces it on an attended target). A
+      # T1: target builds are CONTAINER-DEFAULT (Phase 2). OS confinement comes from the bring-up +
+      # liveness block below — on by default for a target build (FORGE_TARGET_CONTAINER, default 1; legacy
+      # FORGE_TARGET_REQUIRE_CONTAINER honored; set either to 0 to opt out), and always for FORGE_SANDBOX=1. A
       # non-attended target without FORGE_SANDBOX=1 is already refused at the preclaim gate above — both layers
       # are now active, not one silently inactive. FORGE_MAIN_ROOT stays $ROOT so the RO enforce mounts are the
       # forge's (model (c): work_root RW, the whole forge tree RO/absent).
@@ -301,7 +302,12 @@ cmd_start() {
   # Placed after sentinel+claim so kill-switch.sh can release the bead on a bring-up failure. Crosses
   # INTO the sandbox: worktree path, bead id, targets. Stays RUNNER-SIDE: all bd, the PR, reconcile,
   # kill-switch. FORGE_SANDBOX=1 activates it; the automated execution flow sets it.
-  if [ "${FORGE_SANDBOX:-0}" = "1" ] || { [ -n "$work_root" ] && [ "${FORGE_TARGET_REQUIRE_CONTAINER:-0}" = "1" ]; }; then
+  # Phase 2: target-repo builds are CONTAINER-DEFAULT. FORGE_TARGET_CONTAINER (default 1 = on) gates the
+  # target-build container; the legacy FORGE_TARGET_REQUIRE_CONTAINER is honored as an alias; set either to
+  # 0 to opt a target build out to host-side. A SELF build stays host-side unless FORGE_SANDBOX=1 (the
+  # documented attended-maintenance exception). Networked by default (FORGE_SANDBOX_NETWORK, `none` to restrict).
+  _forge_target_container="${FORGE_TARGET_CONTAINER:-${FORGE_TARGET_REQUIRE_CONTAINER:-1}}"
+  if [ "${FORGE_SANDBOX:-0}" = "1" ] || { [ -n "$work_root" ] && [ "$_forge_target_container" != "0" ]; }; then
     export FORGE_MAIN_ROOT="$ROOT"
     echo "→ bringing up the confinement sandbox for the worktree"
     forge_sandbox_up "$wt" || die "sandbox bring-up failed for $id (kill-switch to release the bead)"

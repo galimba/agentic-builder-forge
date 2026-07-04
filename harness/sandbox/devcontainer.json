@@ -67,12 +67,15 @@
     // REPLACES (does not stack with) the default, so a hand-authored profile would only WEAKEN it. A
     // vetted tighter allow-list profile is a documented future hardening, not shipped here.
 
-    // Layer C — egress default-deny at the container-network layer. A microVM's separate netns honors
-    // this identically; it is NOT host iptables (forward-compat (b)). The allow-list proxy/bridge
-    // layers on top of this baseline. Execution needs no registry: deps are installed host-side into
-    // the worktree before the sandbox comes up, and arrive via the RW worktree mount.
+    // Layer C — the container network, PARAMETERIZED (sandbox-lib.sh exports FORGE_SANDBOX_NETWORK,
+    // default `bridge` = networked). Agents need practical dev access (package registries, GitHub,
+    // docs), so the DEFAULT is networked: the container is workspace isolation (Layers A+B), NOT egress
+    // control. A networked container does NOT prevent exfiltration / credential misuse / target-repo
+    // mutation — that is conceded to the human merge. Set FORGE_SANDBOX_NETWORK=none to restore
+    // egress-deny (the old behavior; deps still install host-side, so `none` runs offline). Layers A+B
+    // (hardened container + RO enforce mounts) are unchanged by this value.
     "--network",
-    "none"
+    "${localEnv:FORGE_SANDBOX_NETWORK}"
 
     // forward-compat (c): the runtime is the SINGLE free swap point. Adding "--runtime","runsc" (or
     // "kata") here switches hardened-container -> microVM with NO mount or image change. Left unset =
