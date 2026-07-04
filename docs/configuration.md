@@ -68,7 +68,7 @@ by hand; re-run ensure.
 
 | Variable | Effect |
 |----------|--------|
-| `FORGE_SANDBOX=1` | run the task inside the network-none container sandbox (mandatory for non-attended builds — the harness refuses without it) |
+| `FORGE_SANDBOX=1` | run the task inside the isolation container (opt-in; shipped manifest is `--network none` today — workspace isolation, not an airtight sandbox). Mandatory for non-attended builds — the harness refuses without it |
 | `FORGE_SANDBOX_IMAGE` | override the sandbox base image (default: a devcontainers javascript-node image) |
 | `TARGET=<type>` | select the targets.config stanza |
 | `REVIEWER_BACKEND=<b>` | one-shot reviewer backend override |

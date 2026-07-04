@@ -21,6 +21,16 @@ merge is the actual backstop. This is a strong, defensible position — stated h
 credible than "unbypassable," which the enforcement library itself refuses to claim ("It is NOT
 airtight and does NOT claim to be").
 
+> **Direction (settled architecture, not yet shipped).** The Forge is being aligned toward
+> **networked, container-default target-repo execution**. When that lands — its own topology change —
+> the network/backstop framing in this document is rewritten *in the same change*: the container's role
+> becomes **workspace isolation, not egress control**, and the "container off by default in attended
+> runs" facts below change accordingly. Until then, everything in §§1–4 describes the **current**
+> implementation: an **opt-in** container (attended self-build via `FORGE_SANDBOX=1`; attended target
+> build via `FORGE_TARGET_REQUIRE_CONTAINER=1`; non-attended refused without `FORGE_SANDBOX=1`) whose
+> shipped manifest uses `--network none`. The deny floor is a **guardrail / tripwire** throughout —
+> never complete confinement — and the human merge is the release boundary in every configuration.
+
 ---
 
 ## 1. What is mechanically enforced

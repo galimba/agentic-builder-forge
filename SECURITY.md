@@ -32,9 +32,13 @@
 
 ### The enforcement floor is deny-by-default, not a sandbox
 
-- The PreToolUse deny hook classifies commands and file writes textually; the container
-  sandbox (mount-layer read-only + `--network none`) is the stronger boundary. Run
-  non-attended builds with `FORGE_SANDBOX=1` — the harness refuses otherwise.
+- The PreToolUse deny hook classifies commands and file writes textually — a guardrail /
+  tripwire, not complete confinement. The isolation container (mount-layer read-only +
+  `--network none` in the current manifest) adds a stronger blast-radius boundary, but it is
+  **workspace isolation, not an airtight sandbox**; the human merge is the release boundary.
+  The container is opt-in today and **required for non-attended runs** (`FORGE_SANDBOX=1` — the
+  harness refuses otherwise). Settled direction: networked, container-default target-repo
+  execution, landing as a later topology change.
 - The floor's integrity baseline **self-mints at SessionStart**. There is no committed
   hash: do not add one, and treat any tracked `.harness/session-floor.*.json` as a bug.
 - Enforcement files (`.claude/hooks/`, `.claude/settings.json`, `harness/`) are

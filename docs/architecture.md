@@ -27,14 +27,15 @@ subject of [`limitations.md`](limitations.md).
 | 3 | `PostToolUse` format + lint | `.claude/hooks/post-tool-use-format.sh` | Formats and lints files the agent writes **under `sandbox/`**; blocks on lint failure. | `Write`/`Edit`/`MultiEdit` to sandbox paths only. Not Bash redirects, not NotebookEdit, not non-sandbox files. |
 | 4 | `Stop` gates | `.claude/hooks/stop-gate-tests.sh`, `.claude/hooks/stop-gate-intake.sh` | Blocks "done": tests-green for a build task; clarify/coverage/Gate-A floor for an intake. | Unattended tests-gate never releases; attended releases after a cap (see below). |
 | 5 | Git pre-commit guard | `harness/githooks/pre-commit` | Blocks a commit on `main`/`master` for **every actor and every invocation vector** (agent, human, `eval`, `-c`, pipe). | Fires at git-exec time; independent of the deny hook. Install is verified by the witness. |
-| 6 | OS confinement container | `harness/sandbox/devcontainer.json`, `harness/sandbox-lib.sh` | Read-only mounts of the enforcement files, `--network none`, dropped caps, unprivileged user. | **Optional.** Active only for unattended runs (`FORGE_SANDBOX=1`, mandatory there) and opt-in target builds. **Off by default in attended runs.** |
+| 6 | OS isolation container | `harness/sandbox/devcontainer.json`, `harness/sandbox-lib.sh` | Workspace/filesystem/process isolation: read-only mounts of the enforcement files, `--network none` (current manifest), dropped caps, unprivileged user. Isolation, **not** an airtight sandbox. | **Opt-in today.** Active only when `FORGE_SANDBOX=1` (mandatory for unattended) or `FORGE_TARGET_REQUIRE_CONTAINER=1` (attended target). Off by default in attended runs. Settled direction: networked, container-default for target builds — a later topology change (see [`limitations.md`](limitations.md)). |
 | 7 | `SessionStart` witness | `.claude/hooks/session-start-witness.sh` | Hash-pins the enforcement floor for the session; privileged ops refuse if the floor isn't proven loaded and unchanged. | Gates `finish` and `convert`. Hard under unattended; conditional attended. |
 | 8 | Human merge | GitHub | The release decision and the ultimate backstop for everything tiers 2–6 concede. | Convention for the build agent (no branch protection); the reviewer role is mechanically merge-incapable. |
 
-The layered picture: tier 2 is what stops the agent in real time and is the one that survives
-`--dangerously-skip-permissions`; tiers 5–7 make specific classes mechanical regardless of vector;
-tier 6 is the completeness backstop *when it is on*; tier 8 is the always-present backstop and the
-release control.
+The layered picture: tier 2 is what stops the agent in real time (a Claude-Code-first guardrail /
+tripwire) and is the one that survives `--dangerously-skip-permissions`; tiers 5–7 make specific
+classes mechanical regardless of vector; tier 6 raises blast-radius isolation *when it is on* (it is
+isolation, not an airtight sandbox); tier 8 — the human merge — is the always-present **release
+boundary**. No tier is complete confinement, and none is claimed to be.
 
 ## Component map
 
@@ -141,7 +142,8 @@ The deny hook's design rule (stated and re-stated throughout `lib.sh`) explains
 its shape and its limits in one line: **classify write targets that are identifiable from the argv;
 defer program-internal writes to the OS container; and fail closed on anything entirely
 program-internal.** A `cp x .git/config` is classifiable and denied; an `awk 'BEGIN{print > "..."}'`
-is program-internal and conceded to the container. The textual floor is defense-in-depth that raises
-the cost of the easy shapes; the container (when on) and, beyond it, the human merge are the
-backstops for whatever the floor concedes. [`limitations.md`](limitations.md) enumerates exactly
+is program-internal and conceded to the container. The textual floor is a **guardrail / tripwire** —
+defense-in-depth that raises the cost of the easy shapes, not complete confinement; the isolation
+container (when on — workspace isolation, not an airtight sandbox) and, always, the **human merge** are
+the boundaries for whatever the floor concedes. [`limitations.md`](limitations.md) enumerates exactly
 where that line falls.

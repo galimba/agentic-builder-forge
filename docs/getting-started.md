@@ -8,8 +8,8 @@ From zero to a working harness for your organization.
 |------|-----------|-----------|
 | bash, git, jq | everything | yes |
 | pnpm + node >= 18.18 | the test gate, TS target tooling | yes |
-| [beads (`bd`)](https://github.com/gastownhall/beads) | the task ledger | yes, for real use (the gate SKIPs its suites honestly without it) |
-| docker + devcontainer CLI | the per-task container sandbox | recommended (`FORGE_SANDBOX=1`) |
+| [beads (`bd`)](https://github.com/gastownhall/beads) | the task ledger | yes — **load-bearing**; the task lifecycle cannot run without it (the bd-dependent suites SKIP honestly if absent) |
+| docker + devcontainer CLI | the per-task isolation container | opt-in today (`FORGE_SANDBOX=1`); recommended for isolation, required for non-attended runs |
 | gh (GitHub CLI) | PR creation + close-on-merge reconcile | for the PR loop |
 | ollama **or** claude CLI **or** codex CLI | the advisory reviewer | one of them |
 

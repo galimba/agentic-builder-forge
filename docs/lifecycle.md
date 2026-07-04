@@ -5,7 +5,9 @@ There are two pipelines: **intake** (objective → ratified spec → beads) and 
 merge → closed). Each stage below is tagged by who acts:
 
 - **AUTOMATED** — trusted harness code; deterministic, no model judgment.
-- **AGENT** — the LLM (Claude Code or another) does the work; bounded by mechanical floors.
+- **AGENT** — the LLM does the work, bounded by mechanical floors. Enforcement is
+  **Claude-Code-first**: under Claude Code the real-time hook floor applies; another agent (e.g. Codex)
+  can drive the same loop but under a weaker floor — the git hooks and fail-closed scripts only.
 - **HUMAN** — a person must act; where that requirement is *mechanical* vs. *convention* is called
   out, because it matters for the trust model.
 
@@ -71,7 +73,10 @@ flowchart LR
 3. **Confinement pre-check:** a non-attended start (`FORGE_UNATTENDED=1` or no TTY) is **refused
    unless `FORGE_SANDBOX=1`**, before any side effect. An attended start (TTY, `FORGE_UNATTENDED`
    unset) is exempt — it may run with no container.
-4. `--new` mints the bead (`bd create`) — the **only** create path. Otherwise the bead must exist, be
+4. `--new` mints a one-off bead (`bd create`) directly — the only *ad-hoc* create path in the build
+   loop, and a deliberate exception: in the normal flow **beads are architect-generated from a ratified
+   spec** (intake → `convert`), and a `--new` bead carries no acceptance contract (see
+   [`limitations.md`](limitations.md) and the acceptance gate). Otherwise the bead must exist, be
    in `bd ready`, and be unassigned, or fail closed ("not claimable … no silent mint, no re-claim").
    The bead ID is canonicalized to its full form so a prefix start cannot desync the branch/record
    from the reconcile key.
