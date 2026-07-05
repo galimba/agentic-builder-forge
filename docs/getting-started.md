@@ -47,6 +47,19 @@ bash tests/run-all.sh                       # the canonical gate: PASS everywher
 and the PR flow); Node/pnpm and the container toolchain warn but do not fail (add `--container` to make the
 container toolchain required).
 
+Then watch the whole governed loop run — offline, in seconds — against a **throwaway** target the
+demo synthesizes and deletes (nothing touches your tree, ledger, or `.harness`):
+
+```bash
+bash .forge/scripts/demo.sh
+```
+
+It mints an architect-shaped bead, runs `start` (worktree + a `forge/agent/builder` branch in the
+target), writes the product, and runs `finish` (the target test + the no-LLM acceptance gate + a
+pristine commit) — the same loop steps 4–5 walk you through against your real code. The final push
+stops offline by design: that is exactly where your human merge happens. It needs only `git`, `bd`,
+and `jq` (the throwaway is a `static` target, so no Node/pnpm), and runs it in a terminal.
+
 ## 4. Point it at your code
 
 ```bash
@@ -57,14 +70,16 @@ $EDITOR harness/targets.config   # test/lint/format commands per target type
 ## 5. Run the loop
 
 ```bash
-./harness/intake.sh start "My first objective" --target example-target   # then: clarify, spec-review, ratify, (agent authors the breakdown), ratify-breakdown, analyze, convert
+./harness/intake.sh start "My first objective" --target <your-target>   # the name you registered in step 4; then: clarify, spec-review, ratify, (agent authors the breakdown), ratify-breakdown, analyze, convert
 ./harness/run-task.sh ready                          # see what the decompose minted
 ./harness/run-task.sh start <id>                     # build in an isolated worktree
 ./harness/run-task.sh finish                         # green-gated PR
 ```
 
-Study `specs/001-example/` — a complete worked spec packet — before your first real
-intake. Then read [operating.md](operating.md) and [limitations.md](limitations.md).
+`--target` must name a repo you registered in `harness/repos.config` (step 4) — intake fail-closes
+on an unknown name. Study `specs/001-example/` — a complete worked spec packet (its `example-target`
+is illustrative; register your own before running) — before your first real intake. Then read
+[operating.md](operating.md) and [limitations.md](limitations.md).
 
 ## Optional: the oversight board
 
