@@ -95,6 +95,15 @@ invocation. It is not deterred by the floor; it is deterred by the loud audit re
 (`legacy_bypass: true`), the still-required green tests, and the human merge. The accept-gate is a
 *quality* gate, not a deny boundary — treat this flag accordingly.
 
+Not every task's Definition of Done is a runnable test. Docs, config, and artifact work no longer
+need a fabricated exit-0 `dod_test` to clear the accept-gate: a task may carry an empty `dod_tests`
+so long as it declares **≥1 `sc_evidence` entry with a typed `assert`** — `contains` or `absent` (a
+single-line literal ≤512 chars matched against the *staged blob*) or `sha256` (the blob's exact
+digest). The gate runs a fixed, gate-owned checker over the staged index (`grep -F` / `sha256sum`) —
+no author-supplied code runs — and stays fail-closed: a phantom path (worktree-only, symlink, or
+empty), an absent-when-required or present-when-forbidden literal, a digest mismatch, or a checker
+timeout each **FAIL**. A non-empty `dod_tests` is unaffected and behaves exactly as before.
+
 | Door (env var) | Opens | Audit log | Notes |
 | --- | --- | --- | --- |
 | `FORGE_ALLOW_HOOK_EDIT=1` | Editing an enforcement/harness file (`.claude/hooks/**`, `harness/**`, `.harness/**`, settings). | `.harness/hook-edit-bypass.log` | The sanctioned path for maintaining the hooks (see [`development.md`](development.md)). **No door exists for `.git/` or `.beads/`** — those are unconditionally denied. |

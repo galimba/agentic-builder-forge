@@ -160,13 +160,16 @@ to drift from. The prose sections above carry the _what/why_; this block carries
 | `definition_of_done` | string[] | ≥1 binary, checkable condition for **this** task. Includes a test that fails first, then passes (test-first gate).                                                                                                      |
 | `success_criteria`   | string[] | ≥1 measurable + technology-agnostic criterion; may reference an `SC-NNN` from above or state an inline threshold.                                                                                                       |
 | `scope`              | string[] | ≥1 entry; each a repo-relative **glob** (POSIX pattern) naming the files this task's build may touch. Format is normative (below); validated by invariant 7; enforced by the mechanical acceptance gate (diff ⊆ scope). |
-| `dod_tests`          | string[] | ≥1 entry; each a runnable **test selector** — the mechanical Definition of Done, not prose. Grammar is normative (below); validated syntactically by invariant 8; executed by the acceptance gate, never by `analyze`.  |
-| `sc_evidence`        | object[] | ≥1 entry; each `{"sc": N, "path": "<file>"}` — `N` a **1-based index** into this task's `success_criteria`, `path` the repo-relative file where that criterion's evidence will land. Bidirectional (invariant 9).       |
+| `dod_tests`          | string[] | runnable **test selectors** — the mechanical Definition of Done, not prose. MUST be present as an array; may be `[]` when a non-test `sc_evidence` `assert` is the proof (the ≥1-mechanical-proof rule, P6a). Grammar is normative (below); validated syntactically by invariant 8; executed by the acceptance gate, never by `analyze`.  |
+| `sc_evidence`        | object[] | ≥1 entry; each `{"sc": N, "path": "<file>"}` with an **optional** nested `"assert": {"kind": "contains\|absent\|sha256", "value": "<literal\|64-hex>"}` — `N` a **1-based index** into this task's `success_criteria`, `path` the repo-relative file where that criterion's evidence will land, `assert` a **non-test mechanical proof** the gate checks over the staged blob (grammar below). Bidirectional (invariant 9).       |
 | `verification`       | string   | optional but recommended: the test or command that proves the DoD (the red→green hook).                                                                                                                                 |
 
 The free-text fields stay: `definition_of_done` and `success_criteria` are what the human reads at the
 Gate A′ breakdown sign-off. The three machine fields (`scope`, `dod_tests`, `sc_evidence`) are what the
-mechanical acceptance gate enforces — both are required; neither substitutes for the other.
+mechanical acceptance gate enforces. `scope` is always required. The mechanical Definition of Done is
+now **≥1 mechanical proof**: a non-empty `dod_tests` **or** ≥1 `sc_evidence` entry carrying an `assert`
+(P6a) — `dod_tests` MUST still be present as an array, `[]` when the proof is a non-test `assert`.
+Neither the scope boundary nor the proof substitutes for the other.
 
 ### Selector and glob formats (normative)
 
@@ -192,6 +195,32 @@ file.
 An **`sc_evidence` path** is a repo-relative file path: non-empty, not absolute, no `..` anywhere,
 matching `^[A-Za-z0-9][A-Za-z0-9._/-]*$`, and matched by ≥1 of this task's `scope` globs (so the
 evidence the build creates is always stageable in-scope).
+
+#### `sc_evidence` assert grammar (P6a, normative)
+
+An `sc_evidence` entry MAY carry an optional `"assert": {"kind": <kind>, "value": <value>}` — a
+**non-test mechanical proof** the gate checks in place of a `dod_tests` selector. It is the second way
+a task satisfies the **≥1-mechanical-proof** rule (invariant 8): a non-empty `dod_tests` **or** ≥1
+`sc_evidence` entry with an `assert`. This definition and the checks in `harness/intake.sh`
+`cmd_analyze` (invariant 9) and `harness/accept-gate.sh` (C3) must never diverge — exactly as the three
+formats above are pinned to `cmd_analyze`.
+
+- `kind` is one of `contains`, `absent`, `sha256` — no other value is legal.
+- `value` is **non-empty** in every case.
+- For `contains` / `absent`, `value` is a **literal single-line substring**: matched with `grep -F`
+  (fixed string, never a regex), **≤512 characters**, and **no control characters** (`[[:cntrl:]]`
+  rejects them — including the embedded newline that would make it multi-line).
+- For `sha256`, `value` is exactly **64 lowercase-hex** characters (`^[0-9a-f]{64}$`).
+
+The acceptance gate runs a **fixed, gate-owned checker** over the **staged blob** (`git cat-file blob
+:<path>`): `contains` / `absent` pipe it to `grep -F -q -e "$value"` (`contains` passes iff the literal
+is present; `absent` passes iff it is provably absent — any read/grep error, timeout, or kill fails
+closed), and `sha256` pipes it to `sha256sum` and compares. **No author-supplied code runs** — unlike a
+`dod_tests` selector, which is a whole file the gate executes — so an assert is the safer proof. The
+checker reads the **index** (staged, non-symlink, non-empty blob): a worktree-only evidence file is
+**phantom** and fails at C3 before the assert is ever consulted, exactly as an assert-free `sc_evidence`
+path does. Validation in `analyze` is **syntactic only** (like the invariant-8 selector grammar); the
+gate's checker is bounded by the same `FORGE_MECHGATE_TIMEOUT` / kill-grace as a `dod_tests` selector.
 
 #### Gate-side matching semantics (normative, both directions)
 
@@ -242,13 +271,17 @@ validation in `harness/board-sync.sh`):
 7. `scope` is a non-empty array; every entry is a well-formed repo-relative glob per the normative
    format above (no absolute path, no `..` anywhere, no empty string, no character outside the allowed
    set).
-8. `dod_tests` is a non-empty array; every entry is a syntactically valid selector per the normative
-   grammar above. Syntactic only — `analyze` never executes a test.
+8. `dod_tests` is present as an array — possibly empty `[]`; every entry is a syntactically valid
+   selector per the normative grammar above. Syntactic only — `analyze` never executes a test. **≥1
+   mechanical proof:** a non-empty `dod_tests` **or** ≥1 `sc_evidence` entry carrying an `assert` (P6a).
+   A task with an empty `dod_tests` and no assert has no mechanical Definition of Done and is rejected.
 9. `sc_evidence` is a non-empty array of `{sc, path}` objects, **bidirectional**: every
    `success_criteria` index (1-based) is covered by ≥1 entry; every entry's `sc` resolves to a defined
    index; every `path` is a well-formed repo-relative file per the normative format above **and is
    matched by ≥1 `scope` glob** (an out-of-scope evidence path is unsatisfiable at the
-   gate: C3 stages it, C1 rejects it).
+   gate: C3 stages it, C1 rejects it). An entry MAY carry an optional `assert`, validated
+   syntactically per the **assert grammar (P6a)** above; the acceptance gate runs its fixed checker
+   over the staged blob (`analyze` never does).
 
 > A reference jq predicate for invariant 2 (id uniqueness), illustrating the idiom:
 > `jq -e '(.tasks | map(.id)) as $ids | ($ids | unique | length) == ($ids | length)'`

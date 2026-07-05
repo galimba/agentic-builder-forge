@@ -450,7 +450,10 @@ if [ -n "$INTAKE9" ]; then
   arej9 "scope brace expansion (not POSIX matching)" "$(printf '%s' "$AVALID" | jq -c '.tasks[0].scope = ["docs/x-{a,b}/**"]')" 'scope entry "docs/x-{a,b}/**"'
 
   echo "== schema: invariant 8 (dod_tests) rejections — offender NAMED =="
-  arej9 "dod_tests empty array" "$(printf '%s' "$AVALID" | jq -c '.tasks[0].dod_tests = []')" "task T001: dod_tests is missing or empty"
+  # P6a: an empty dod_tests is no longer rejected outright — it is legal iff an sc_evidence assert stands
+  # in. AVALID's evidence has NO assert, so an empty dod_tests here fails the >=1-mechanical-proof rule.
+  arej9 "dod_tests empty + no assert -> no mechanical proof (P6a)" "$(printf '%s' "$AVALID" | jq -c '.tasks[0].dod_tests = []')" "task T001: no mechanical proof"
+  arej9 "dod_tests not an array (string) (P6a)" "$(printf '%s' "$AVALID" | jq -c '.tasks[0].dod_tests = "tests/intake/run.sh"')" "task T001: dod_tests is missing or not an array"
   arej9 "dod_tests non-selector format" "$(printf '%s' "$AVALID" | jq -c '.tasks[0].dod_tests = ["make test"]')" 'dod_tests entry "make test"'
   arej9 "dod_tests .. traversal" "$(printf '%s' "$AVALID" | jq -c '.tasks[0].dod_tests = ["tests/../../etc/x.sh"]')" 'dod_tests entry "tests/../../etc/x.sh"'
   arej9 "dod_tests absolute path" "$(printf '%s' "$AVALID" | jq -c '.tasks[1].dod_tests = ["/tests/x.sh"]')" 'dod_tests entry "/tests/x.sh"'
@@ -482,6 +485,33 @@ if [ -n "$INTAKE9" ]; then
   # boolean it ERRORS (fail-open class) — both must be NAMED rejections, never a nine-hold PASS.
   arej9 "success_criteria boolean (jq-length error, fail-open class)" "$(printf '%s' "$AVALID" | jq -c '.tasks[0].success_criteria = true')" "task T001: success_criteria is not an array"
   arej9 "success_criteria scalar 1 (vacuous bidirectional coverage)" "$(printf '%s' "$AVALID" | jq -c '.tasks[0].success_criteria = 1')" "task T001: success_criteria is not an array"
+
+  # --- P6a: non-test evidence (sc_evidence.assert) + the >=1-mechanical-proof rule ------------------
+  echo "== schema: P6a — empty dod_tests + a valid sc_evidence assert is ACCEPTED (non-test evidence) =="
+  P6A_CONTAINS="$(printf '%s' "$AVALID" | jq -c '.tasks[0].dod_tests = [] | .tasks[0].sc_evidence = [{"sc":1,"path":"sandbox/comments/evidence/sc1.txt","assert":{"kind":"contains","value":"About"}}]')"
+  mk_aspec "$AD/p6a-contains.md" "$P6A_CONTAINS"
+  pc_out="$(bash "$INTAKE9" analyze "$AD/p6a-contains.md" 2>&1)" && ok || no "schema: P6a empty-dod + contains-assert accepted (got: $pc_out)"
+  P6A_SHA="$(printf '%s' "$AVALID" | jq -c '.tasks[0].dod_tests = [] | .tasks[0].sc_evidence = [{"sc":1,"path":"sandbox/comments/evidence/sc1.txt","assert":{"kind":"sha256","value":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}}]')"
+  mk_aspec "$AD/p6a-sha.md" "$P6A_SHA"
+  ps_out="$(bash "$INTAKE9" analyze "$AD/p6a-sha.md" 2>&1)" && ok || no "schema: P6a empty-dod + sha256-assert accepted (got: $ps_out)"
+  P6A_BOTH="$(printf '%s' "$AVALID" | jq -c '.tasks[0].sc_evidence[0].assert = {"kind":"absent","value":"TODO"}')"
+  mk_aspec "$AD/p6a-both.md" "$P6A_BOTH"
+  pb_out="$(bash "$INTAKE9" analyze "$AD/p6a-both.md" 2>&1)" && ok || no "schema: P6a dod_tests + assert both present accepted (got: $pb_out)"
+
+  echo "== schema: P6a — assert-grammar rejections, offender NAMED =="
+  arej9 "P6a assert bad kind" "$(printf '%s' "$AVALID" | jq -c '.tasks[0].sc_evidence[0].assert = {"kind":"regex","value":"a.*b"}')" "assert.kind"
+  arej9 "P6a assert kind not string" "$(printf '%s' "$AVALID" | jq -c '.tasks[0].sc_evidence[0].assert = {"kind":42,"value":"x"}')" "assert.kind must be a string"
+  arej9 "P6a assert sha256 not 64hex" "$(printf '%s' "$AVALID" | jq -c '.tasks[0].sc_evidence[0].assert = {"kind":"sha256","value":"deadbeef"}')" "must be 64 lowercase-hex"
+  arej9 "P6a assert value empty" "$(printf '%s' "$AVALID" | jq -c '.tasks[0].sc_evidence[0].assert = {"kind":"contains","value":""}')" "assert.value must be non-empty"
+  arej9 "P6a assert value missing" "$(printf '%s' "$AVALID" | jq -c '.tasks[0].sc_evidence[0].assert = {"kind":"contains"}')" "assert.value must be a string"
+  arej9 "P6a assert not an object" "$(printf '%s' "$AVALID" | jq -c '.tasks[0].sc_evidence[0].assert = "contains:About"')" "assert must be an object"
+  arej9 "P6a assert value control char" "$(printf '%s' "$AVALID" | jq -c --arg v "$(printf 'a\nb')" '.tasks[0].sc_evidence[0].assert = {"kind":"contains","value":$v}')" "no control characters"
+  # length boundary: 512 accepted, 513 rejected (guards an off-by-one in the <=512 predicate)
+  V512="$(printf 'a%.0s' $(seq 1 512))"
+  P6A_512="$(printf '%s' "$AVALID" | jq -c --arg v "$V512" '.tasks[0].dod_tests = [] | .tasks[0].sc_evidence = [{"sc":1,"path":"sandbox/comments/evidence/sc1.txt","assert":{"kind":"contains","value":$v}}]')"
+  mk_aspec "$AD/p6a-512.md" "$P6A_512"
+  p512_out="$(bash "$INTAKE9" analyze "$AD/p6a-512.md" 2>&1)" && ok || no "schema: P6a assert value 512 chars accepted (boundary) (got: $p512_out)"
+  arej9 "P6a assert value 513 chars rejected (boundary)" "$(printf '%s' "$AVALID" | jq -c --arg v "$(printf 'a%.0s' $(seq 1 513))" '.tasks[0].sc_evidence[0].assert = {"kind":"contains","value":$v}')" "exceeds 512"
 fi
 
 echo "== intake analyze (Gate B): spec resolution — explicit arg vs sentinel; fail-closed =="
