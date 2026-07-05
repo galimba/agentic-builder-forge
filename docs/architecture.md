@@ -27,7 +27,7 @@ subject of [`limitations.md`](limitations.md).
 | 3 | `PostToolUse` format + lint | `.claude/hooks/post-tool-use-format.sh` | Formats and lints files the agent writes **under `sandbox/`**; blocks on lint failure. | `Write`/`Edit`/`MultiEdit` to sandbox paths only. Not Bash redirects, not NotebookEdit, not non-sandbox files. |
 | 4 | `Stop` gates | `.claude/hooks/stop-gate-tests.sh`, `.claude/hooks/stop-gate-intake.sh` | Blocks "done": tests-green for a build task; clarify/coverage/Gate-A floor for an intake. | Unattended tests-gate never releases; attended releases after a cap (see below). |
 | 5 | Git pre-commit guard | `harness/githooks/pre-commit` | Blocks a commit on `main`/`master` for **every actor and every invocation vector** (agent, human, `eval`, `-c`, pipe). | Fires at git-exec time; independent of the deny hook. Install is verified by the witness. |
-| 6 | OS isolation container | `harness/sandbox/devcontainer.json`, `harness/sandbox-lib.sh` | Workspace/filesystem/process isolation: read-only mounts of the enforcement files, `--network none` (current manifest), dropped caps, unprivileged user. Isolation, **not** an airtight sandbox. | **Opt-in today.** Active only when `FORGE_SANDBOX=1` (mandatory for unattended) or `FORGE_TARGET_REQUIRE_CONTAINER=1` (attended target). Off by default in attended runs. Settled direction: networked, container-default for target builds — a later topology change (see [`limitations.md`](limitations.md)). |
+| 6 | OS isolation container | `harness/sandbox/devcontainer.json`, `harness/sandbox-lib.sh` | Workspace/filesystem/process isolation: read-only mounts of the enforcement files, **networked by default** (`FORGE_SANDBOX_NETWORK=bridge`; `none` restores egress-deny), dropped caps, unprivileged user. Isolation, **not** an airtight sandbox and **not** egress control. | **Default for target builds** (`FORGE_TARGET_CONTAINER=1`); mandatory for unattended runs (`FORGE_SANDBOX=1`); attended self-build runs host-side (a documented maintenance exception). |
 | 7 | `SessionStart` witness | `.claude/hooks/session-start-witness.sh` | Hash-pins the enforcement floor for the session; privileged ops refuse if the floor isn't proven loaded and unchanged. | Gates `finish` and `convert`. Hard under unattended; conditional attended. |
 | 8 | Human merge | GitHub | The release decision and the ultimate backstop for everything tiers 2–6 concede. | Convention for the build agent (no branch protection); the reviewer role is mechanically merge-incapable. |
 
@@ -69,7 +69,7 @@ Core = load-bearing enforcement or orchestration. Support = scaffolding, config,
 | `githooks/pre-commit` | ~48 | The all-actors commit-on-`main` guard (tier 5). |
 | `targets.config` | — | Per-target `TEST_CMD`/`LINT_CMD`/`FORMAT_CMD`/`SANDBOX_GLOB`. Ships `typescript` (default), `python`, `static`. The commands are read from here, never hardcoded in the hooks. |
 | `beads.config`, `reviewers.config`, `intake.config`, `intake-categories.json`, `repos.config(.example)`, `board.config(.example)` | — | Config for `bd`, review backends, intake budgets, the 142-category coverage enum, the target-name→path map, and the board manifest. |
-| `sandbox/devcontainer.json` | — | The container manifest: read-only enforcement mounts, `--network none`, `--cap-drop=ALL`, unprivileged user. |
+| `sandbox/devcontainer.json` | — | The container manifest: read-only enforcement mounts, networked by default (`FORGE_SANDBOX_NETWORK`; `none` to restrict), `--cap-drop=ALL`, unprivileged user. |
 
 ### Roles, skills, data, tests, docs
 

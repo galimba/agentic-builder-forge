@@ -9,7 +9,7 @@ From zero to a working harness for your organization.
 | bash, git, jq | everything | yes |
 | pnpm + node >= 18.18 | the test gate, TS target tooling | yes |
 | [beads (`bd`)](https://github.com/gastownhall/beads) | the task ledger | yes — **load-bearing**; the task lifecycle cannot run without it (the bd-dependent suites SKIP honestly if absent) |
-| docker + devcontainer CLI | the per-task isolation container | opt-in today (`FORGE_SANDBOX=1`); recommended for isolation, required for non-attended runs |
+| docker + devcontainer CLI | the per-task isolation container | the default for target builds and required for non-attended runs (attended self-build runs host-side) |
 | gh (GitHub CLI) | PR creation + close-on-merge reconcile | for the PR loop |
 | ollama **or** claude CLI **or** codex CLI | the advisory reviewer | one of them |
 

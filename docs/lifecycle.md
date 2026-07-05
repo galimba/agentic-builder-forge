@@ -71,8 +71,9 @@ flowchart LR
 2. `require_root` warns if `$PWD` ≠ repo root (hard refusal under `FORGE_REQUIRE_ROOT=1`); refuse if a
    task is already active; `bd` version/status preflight.
 3. **Confinement pre-check:** a non-attended start (`FORGE_UNATTENDED=1` or no TTY) is **refused
-   unless `FORGE_SANDBOX=1`**, before any side effect. An attended start (TTY, `FORGE_UNATTENDED`
-   unset) is exempt — it may run with no container.
+   unless `FORGE_SANDBOX=1`**, before any side effect. An attended **self-build** is exempt — it runs
+   host-side (the documented maintenance exception); an attended **target** build is containerized by
+   default (see stage 7).
 4. `--new` mints a one-off bead (`bd create`) directly — the only *ad-hoc* create path in the build
    loop, and a deliberate exception: in the normal flow **beads are architect-generated from a ratified
    spec** (intake → `convert`), and a `--new` bead carries no acceptance contract (see
@@ -84,8 +85,10 @@ flowchart LR
    feature branch (feature builds) so the worktree carries the live `.claude/` hooks.
 6. Self-vs-target classification (see below); write the sentinel `.harness/active-task.json`; then
    `bd update --claim` (after the sentinel, so kill-switch can release on a later failure).
-7. Optional container bring-up — `if FORGE_SANDBOX=1` **or** (target build **and**
-   `FORGE_TARGET_REQUIRE_CONTAINER=1`) — with an EROFS liveness probe and a failure-path teardown trap.
+7. Container bring-up — `if FORGE_SANDBOX=1` **or** (target build **and** `FORGE_TARGET_CONTAINER≠0`,
+   default on; the legacy `FORGE_TARGET_REQUIRE_CONTAINER=1` is honored as an alias) — networked by
+   default (`FORGE_SANDBOX_NETWORK`, `none` to restrict), with an EROFS liveness probe and a
+   failure-path teardown trap.
 
 ### Stage 2 — TDD loop — AGENT, bounded
 

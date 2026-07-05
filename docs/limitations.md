@@ -15,21 +15,23 @@ document ends with a note on how to read it as an adopter.
 
 The overall posture: **a mechanically-enforced deny floor plus a human-gated release.** The floor
 reliably blocks a fixed set of dangerous command shapes and fails closed; determined obfuscation is
-conceded to an OS container and to the human merge. The container is **off by default in attended
-runs**, so in the normal workflow the deny floor raises the cost of the easy shapes and the human
-merge is the actual backstop. This is a strong, defensible position — stated honestly it is more
-credible than "unbypassable," which the enforcement library itself refuses to claim ("It is NOT
-airtight and does NOT claim to be").
+conceded to an OS container and to the human merge. The container is **the default for target-repo
+builds** and **host-side for attended self-build / Forge-maintenance** (a documented exception); in
+every configuration the deny floor raises the cost of the easy shapes and the human merge is the
+release boundary. This is a strong, defensible position — stated honestly it is more credible than
+"unbypassable," which the enforcement library itself refuses to claim ("It is NOT airtight and does NOT
+claim to be").
 
-> **Direction (settled architecture, not yet shipped).** The Forge is being aligned toward
-> **networked, container-default target-repo execution**. When that lands — its own topology change —
-> the network/backstop framing in this document is rewritten *in the same change*: the container's role
-> becomes **workspace isolation, not egress control**, and the "container off by default in attended
-> runs" facts below change accordingly. Until then, everything in §§1–4 describes the **current**
-> implementation: an **opt-in** container (attended self-build via `FORGE_SANDBOX=1`; attended target
-> build via `FORGE_TARGET_REQUIRE_CONTAINER=1`; non-attended refused without `FORGE_SANDBOX=1`) whose
-> shipped manifest uses `--network none`. The deny floor is a **guardrail / tripwire** throughout —
-> never complete confinement — and the human merge is the release boundary in every configuration.
+> **Container model (current).** Target-repo builds run in a **networked, isolated container by
+> default** (`FORGE_TARGET_CONTAINER=1`; the legacy `FORGE_TARGET_REQUIRE_CONTAINER=1` is honored as an
+> alias). Unattended runs **require** it (`FORGE_SANDBOX=1`). Attended **self-build / Forge-maintenance**
+> runs host-side by default — a documented high-trust exception. The container is **workspace isolation,
+> not egress control**: the shipped manifest is networked (`FORGE_SANDBOX_NETWORK=bridge`; set
+> `FORGE_SANDBOX_NETWORK=none` to restore container-level egress-deny), so a networked container does
+> **not** prevent credential misuse, exfiltration, GitHub-authority misuse, or target-repo mutation.
+> What it *does* enforce is unchanged — read-only mounts of the enforcement files (EROFS), dropped caps,
+> an unprivileged user. The deny floor is a **guardrail / tripwire** throughout — never complete
+> confinement — and the human merge is the release boundary in every configuration.
 
 ---
 
@@ -75,14 +77,15 @@ known escape shapes, from the code's own comments:
 | Path-qualified `sudo` (`/usr/bin/sudo`) | evades the word-match | platform safety hook + container |
 | The acceptance gate's own interpreter | a sandbox-shimmed `bash` could interpret the gate and forge a PASS | it's a *quality* gate, not a boundary; launch-time trust is the container + human merge |
 
-**The load-bearing caveat: the container is not always on.** The OS confinement container
-(`--network none`, read-only mounts of the enforcement files, dropped caps, unprivileged user) is
-brought up **only** for unattended runs (where `FORGE_SANDBOX=1` is mandatory) and for opt-in target
-builds (`FORGE_TARGET_REQUIRE_CONTAINER=1`). **In a default attended run there is no container.** So
-for every "backstop: OS container" row above, in the attended workflow the real backstop is the deny
-hook (for the shapes it models) plus the human merge (for everything it concedes). This is the single
-most important reframing of the security story: *attended, the human merge is the completeness
-boundary.*
+**The load-bearing caveat: the container is not always on, and it is networked.** The OS isolation
+container (networked by default — `FORGE_SANDBOX_NETWORK=bridge`; read-only mounts of the enforcement
+files, dropped caps, unprivileged user) is brought up **by default for target-repo builds**
+(`FORGE_TARGET_CONTAINER=1`) and is **mandatory for unattended runs** (`FORGE_SANDBOX=1`), but an
+**attended self-build runs host-side** (the documented maintenance exception). So for a self-build the
+real backstop is the deny hook (for the shapes it models) plus the human merge (for everything it
+concedes); and because the container is networked, even a container build bounds filesystem/process
+blast radius but **not** network egress. This is the single most important reframing of the security
+story: *the human merge is the completeness boundary.*
 
 **Subprocess blindness (architectural).** `PreToolUse` sees only the tool-call input — the command
 string, file path, and content. It never sees the process tree a command spawns. A script the agent
@@ -146,8 +149,10 @@ Both fail closed; neither opens a hole.
   not adjudicated; only a relative `../my-vault/…` write is denied, and that is via the general
   `..`-unverifiable rule, not a vault claim. (An earlier "vault is read-only, enforced" claim was
   removed precisely because it was leaky and the floor could not keep it.)
-- **Network egress** — controlled only *inside* the container (`--network none`), i.e. not in attended
-  runs.
+- **Network egress** — **not controlled by default.** The container is networked
+  (`FORGE_SANDBOX_NETWORK=bridge`) so agents can reach package registries, GitHub, and documentation;
+  set `FORGE_SANDBOX_NETWORK=none` to restore container-level egress-deny. Egress control is otherwise
+  out of scope — a networked container does not prevent exfiltration.
 - **Secret-scanning depth** — a shallow regex, not a real scanner; novel token shapes pass.
 - **The target repo's own code quality** — the harness gates the target's configured tests/lint, not
   the correctness of its source.
@@ -163,8 +168,10 @@ Both fail closed; neither opens a hole.
 
 ## 4. Structural / trust-model limits (design facts, not defects)
 
-- **The container is off by default in attended runs** — restated here because it governs §2's whole
-  backstop column. Attended, the human merge is the completeness boundary.
+- **The container is default for target builds, host-side for attended self-build.** Restated here
+  because it governs §2's whole backstop column: for an attended self-build (host-side) the human merge
+  is the completeness boundary; for a container build the merge is still the release boundary and the
+  container adds filesystem/process isolation — but, being networked, not egress control.
 - **Client-side capability denies, not server-side branch protection.** "Agents never merge / never
   push `main`" is enforced against the agent's *tool calls*. The deny hook now denies the agent's Bash
   `gh pr merge` (plus repo-admin / secret / auth / workflow / `gh api` write paths) as a bounded
@@ -207,8 +214,9 @@ file each residual as a bead (e.g. `fx-…`) and tag it with the taxonomy this d
 
 - **`[mech-mitigated]`** — a mechanical control reduces the risk but doesn't fully close it (often an
   over-block that fails *safe*).
-- **`[best-effort]`** — a textual best-effort with the OS container as backstop (recall §2: that
-  container is off by default attended).
+- **`[best-effort]`** — a textual best-effort with the OS container as backstop (recall §2: the
+  container is default for target builds and host-side for attended self-build, and it is networked —
+  filesystem/process isolation, not egress control).
 - **`[out-of-scope]`** — deliberately not controlled.
 - **`[open]`** — a genuine gap, no full mechanical mitigation yet.
 

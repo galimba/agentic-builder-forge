@@ -40,6 +40,11 @@ _forge_sandbox_env() {
   : "${FORGE_MAIN_ROOT:?sandbox-lib: FORGE_MAIN_ROOT must be set (the main checkout root)}"
   export FORGE_MAIN_ROOT
   FORGE_SANDBOX_IMAGE="$(forge_sandbox_image)"; export FORGE_SANDBOX_IMAGE
+  # Phase 2: the container network the manifest expands into `--network ${localEnv:FORGE_SANDBOX_NETWORK}`.
+  # Default `bridge` = networked (agents need registries/GitHub/docs). `none` restores egress-deny. The
+  # container is workspace isolation (Layers A+B), NOT egress control — a networked container does not
+  # prevent exfiltration; that is conceded to the human merge.
+  FORGE_SANDBOX_NETWORK="${FORGE_SANDBOX_NETWORK:-bridge}"; export FORGE_SANDBOX_NETWORK
 }
 
 # forge_sandbox_up <worktree-abs-path> — bring up the confined sandbox for a worktree. Idempotent
