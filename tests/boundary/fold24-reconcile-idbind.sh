@@ -21,9 +21,14 @@ FLOOR_PRE="$(git -C "$LIVE_ROOT" hash-object .claude/hooks/lib.sh 2>/dev/null)"
 # RED gate: the pure predicates must exist (absent on pristine substrate -> RED until the splice lands).
 type forge_reconcile_id_bound  >/dev/null 2>&1 || { bad "forge_reconcile_id_bound absent (RED until the splice lands)"; echo "==== fold24-reconcile-idbind: $P passed, $F failed ===="; exit 1; }
 type forge_reconcile_record_ok >/dev/null 2>&1 || { bad "forge_reconcile_record_ok absent (RED until the splice lands)"; echo "==== fold24-reconcile-idbind: $P passed, $F failed ===="; exit 1; }
+type forge_target_branch_ns    >/dev/null 2>&1 || { bad "forge_target_branch_ns absent (RED until the Phase 3 splice lands)"; echo "==== fold24-reconcile-idbind: $P passed, $F failed ===="; exit 1; }
 
 idb(){ if forge_reconcile_id_bound  "$1" "$2" "$3"; then printf CLOSE; else printf SKIP; fi; }
 rok(){ if forge_reconcile_record_ok "$1" "$2";      then printf OK;    else printf SKIP; fi; }
+
+echo "== forge_target_branch_ns: the TRUSTED namespace prefix (default forge/agent), agent env stripped =="
+[ "$(forge_target_branch_ns)" = "forge/agent" ] && ok "default namespace -> forge/agent" || bad "default namespace wrong" "$(forge_target_branch_ns)"
+[ "$(FORGE_TARGET_BRANCH_NS=evil/attacker forge_target_branch_ns)" = "forge/agent" ] && ok "a poisoned FORGE_TARGET_BRANCH_NS env is IGNORED (trust: read only from the enforce-protected config)" || bad "agent env must NOT influence the reconcile namespace" "$(FORGE_TARGET_BRANCH_NS=evil/attacker forge_target_branch_ns)"
 
 echo "== forge_reconcile_id_bound: the 3-arm dispatch keyed on the gh-VOUCHED head ref =="
 # ARM 1 — single-task, id-bound
@@ -36,6 +41,18 @@ echo "== forge_reconcile_id_bound: the 3-arm dispatch keyed on the gh-VOUCHED he
 [ "$(idb fx-ccc 'feat/my-feature' 'feat/my-feature')" = CLOSE ] && ok "ARM3 feat/F WITH headref==record_branch -> CLOSE (folded-close preserved)" || bad "ARM3 folded-close should CLOSE"
 [ "$(idb fx-ccc 'feat/my-feature' 'feat/OTHER')" = SKIP ] && ok "ARM3 feat/F WITH headref!=record_branch -> SKIP (record mismatch)" || bad "ARM3 mismatch should SKIP"
 [ "$(idb fx-ddd 'release-x' 'release-x')" = CLOSE ] && ok "ARM3 non-feat override (release-x) WITH record-match -> CLOSE (the catch-all arm, NOT task-reconstruction)" || bad "ARM3 must record-match a non-feat override, never misroute it into ARM1"
+
+echo "== ARM 1b — TARGET-build id-bound in the new namespace (forge/agent/builder/<bead>-<slug>) =="
+[ "$(idb fx-aaa 'forge/agent/builder/fx-aaa-my-slug' 'forge/agent/builder/fx-aaa-my-slug')" = CLOSE ] && ok "ARM1b <ns>/builder/<bead>-<slug> -> CLOSE" || bad "ARM1b should CLOSE"
+[ "$(idb fx-aaa 'forge/agent/builder/fx-aaa-my-slug' 'WHATEVER-record-field')" = CLOSE ] && ok "ARM1b ignores record.branch (id-bound to \$bead, not the record)" || bad "ARM1b must not consult record.branch"
+# ARM 2 in the new namespace — the security-critical forgery reject
+[ "$(idb fx-aaa 'forge/agent/builder/fx-bbb-sibling' 'forge/agent/builder/fx-bbb-sibling')" = SKIP ] && ok "ARM2 forgery <ns>/builder/<OTHER>-<slug> WITH headref==record_branch -> SKIP (branch-field forgery closed in the new namespace)" || bad "ARM2 MUST skip a sibling forge/agent head ref even when headref==record_branch"
+[ "$(idb fx-aaa 'forge/agent/builder/fx-aaaa-tricky' 'forge/agent/builder/fx-aaaa-tricky')" = SKIP ] && ok "ARM2 prefix-collision: <ns>/builder/fx-aaaa- is NOT fx-aaa- (hyphen boundary)" || bad "ARM2 must not let fx-aaaa masquerade as fx-aaa in the new namespace"
+[ "$(idb fx-aaa 'forge/agent/architect/fx-aaa-x' 'forge/agent/architect/fx-aaa-x')" = SKIP ] && ok "ARM2 a NON-builder forge/agent/ role -> SKIP (only builder id-binds; other roles fall to the forgery-reject, not record-match)" || bad "ARM2 must skip a non-builder forge/agent role"
+[ "$(idb fx-aaa 'forge/agent/builder/fx-bbb/fx-aaa-x' 'forge/agent/builder/fx-bbb/fx-aaa-x')" = SKIP ] && ok "ARM2 multi-segment smuggle (…/fx-bbb/fx-aaa-x) -> SKIP (FIXED prefix, no wildcard role — an id cannot be smuggled in a deeper segment)" || bad "a multi-segment head ref must not id-bind to fx-aaa"
+# CROSS-NAMESPACE: the task/ arms are UNCHANGED and independent of the new namespace
+[ "$(idb fx-aaa 'task/fx-aaa-x' 'forge/agent/builder/fx-aaa-x')" = CLOSE ] && ok "cross-ns: a real task/ head ref still id-binds ARM1 even if the record is forge/agent-shaped" || bad "task/ ARM1 must be independent of the record namespace"
+[ "$(idb fx-aaa 'forge/agent/builder/fx-bbb-x' 'task/fx-aaa-x')" = SKIP ] && ok "cross-ns forgery: a sibling forge/agent head ref with a task/-shaped record -> SKIP" || bad "cross-ns sibling forgery must SKIP"
 
 echo "== N assembly-folded beads on ONE feat/F all close (the regression guard) =="
 allclose=1; for b in fx-f01 fx-f02 fx-f03 fx-f04; do [ "$(idb "$b" 'feat/bundle' 'feat/bundle')" = CLOSE ] || allclose=0; done
@@ -58,6 +75,12 @@ echo "== read-side shape hygiene — malformed repo/branch -> SKIP (fail-closed)
 # — forge_reconcile_id_bound is a pure function with no I/O; in production the reconcile loop feeds it a real
 # merged PR's gh-vouched head ref, not this test. It is a static duplicate of the ARM3 record-match arm.
 [ "$(idb fx-real 'feat/cp-floorhardening-2' 'feat/cp-floorhardening-2')" = CLOSE ] && ok "ARM3 static sanity: a feat/ head ref matching its record -> CLOSE" || bad "ARM3 static sanity failed"
+
+echo "== CANARY: the deployed harness carries the Phase 3 wiring (RED until the splice lands) =="
+grep -qF 'forge_target_branch_ns()' "$LIVE_ROOT/harness/beads-lib.sh" && ok "beads-lib defines forge_target_branch_ns" || bad "helper missing"
+grep -qF 'forge_target_branch_ns)/builder/$id-$slug' "$LIVE_ROOT/harness/run-task.sh" && ok "run-task builds the target branch via the trusted helper" || bad "run-task target-branch wiring missing"
+grep -qF 'FORGE_TARGET_BRANCH_NS=' "$LIVE_ROOT/harness/branches.config" 2>/dev/null && ok "branches.config carries the trusted namespace" || bad "branches.config missing"
+grep -qF 'forge_target_branch_ns)"/*' "$LIVE_ROOT/harness/kill-switch.sh" && ok "kill-switch widened to the target namespace" || bad "kill-switch guard not widened"
 
 FLOOR_POST="$(git -C "$LIVE_ROOT" hash-object .claude/hooks/lib.sh 2>/dev/null)"
 [ -n "$FLOOR_PRE" ] && [ "$FLOOR_PRE" = "$FLOOR_POST" ] && ok "this test run did NOT move the floor" || bad "lib.sh changed during the test run" "pre=$FLOOR_PRE post=$FLOOR_POST"

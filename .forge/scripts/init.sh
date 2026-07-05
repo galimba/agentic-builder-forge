@@ -112,6 +112,16 @@ echo "Reviewer backend default: ${REVIEWER_DEFAULT} (${REVIEWER_WHY})"
 read -rp "Reviewer backend [ollama/claude-fresh/codex] (default: ${REVIEWER_DEFAULT}): " REVIEWER_BACKEND
 REVIEWER_BACKEND="${REVIEWER_BACKEND:-${REVIEWER_DEFAULT}}"
 echo ""
+echo "Target-repo agent branches are named '<namespace>/builder/<id>-<slug>' (self builds keep"
+echo "'task/<id>-<slug>'). The reconcile close binds to this namespace; the default is fine for almost"
+echo "everyone."
+read -rp "Target-repo branch namespace (default: forge/agent): " FORGE_TARGET_BRANCH_NS
+FORGE_TARGET_BRANCH_NS="${FORGE_TARGET_BRANCH_NS:-forge/agent}"
+case "$FORGE_TARGET_BRANCH_NS" in
+  '' | *[!A-Za-z0-9/_-]* | /* | */ | task | task/*)
+    echo "ERROR: invalid branch namespace '${FORGE_TARGET_BRANCH_NS}'. Use [A-Za-z0-9/_-], no leading/trailing slash, not 'task'."; exit 2 ;;
+esac
+echo ""
 echo "The harness marks and parses structured blocks with an internal marker"
 echo "namespace (e.g. '<!-- forge:tasks:begin v1 -->'). The default is fine for"
 echo "almost everyone; override only if 'forge:' collides with your tooling."
@@ -272,6 +282,12 @@ echo "  REVIEWER_BACKEND default -> ${REVIEWER_BACKEND} (env override still wins
 if [[ "$REVIEWER_BACKEND" == "ollama" ]]; then
     echo "  NOTE: set ollama_MODEL in harness/reviewers.config to a model you have pulled."
 fi
+
+# Target-repo branch namespace (Phase 3). Enforce-protected + trusted by the reconcile close.
+echo "Setting target-repo branch namespace..."
+sed -i "s|^FORGE_TARGET_BRANCH_NS=.*|FORGE_TARGET_BRANCH_NS=\"${FORGE_TARGET_BRANCH_NS}\"|" \
+    "${FORGE_ROOT}/harness/branches.config"
+echo "  FORGE_TARGET_BRANCH_NS -> ${FORGE_TARGET_BRANCH_NS} (target-repo builder branches: ${FORGE_TARGET_BRANCH_NS}/builder/<id>-<slug>; self builds keep task/<id>-<slug>)"
 
 # ==============================================================================
 # 6. MARKER NAMESPACE (optional rename — must stay consistent EVERYWHERE it is
