@@ -5,7 +5,7 @@
 #   - release the claimed bead (in_progress/in_review -> open, unassigned) so it re-enters `bd ready`
 #   - SIGTERM the recorded task process if one is alive (headless mode; interactive records none)
 #   - remove the task worktree (--force discards its uncommitted changes)
-#   - delete the LOCAL task/* branch (refuses anything not under task/*)
+#   - delete the LOCAL agent branch — task/* (self) or <ns>/builder/* (target); refuses anything else
 #   - clear the sentinel
 # Never touches main/base. One documented command: ./harness/kill-switch.sh
 # Deployed enforcement-protected file: agent edits are floor-denied; changes are authored as sandbox/ candidates and human-spliced under FORGE_ALLOW_HOOK_EDIT=1 (audit-logged).
@@ -54,9 +54,9 @@ bead="$(jq -r '.bead // empty' "$SENTINEL")"
 target_path="$(jq -r '.target_path // empty' "$SENTINEL")"
 repo="${target_path:-$ROOT}"
 case "$branch" in
-  task/*) : ;;
+  task/* | "$(forge_target_branch_ns)"/*) : ;;
   *)
-    echo "kill-switch: refusing — '$branch' is not a task/* branch" >&2
+    echo "kill-switch: refusing — '$branch' is not a task/* or $(forge_target_branch_ns)/* branch (the sanctioned agent namespaces)" >&2
     exit 1
     ;;
 esac

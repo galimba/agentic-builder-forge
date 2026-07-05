@@ -295,8 +295,8 @@ git -C "$TGT" worktree list 2>/dev/null | grep -qF "$twt" && pass || fail "workt
 # testable. We do NOT assert `finish exit 0`. ATTENDED via pty (Item-4 gates the finish path too).
 printf '<p>about</p>\n' >"$twt/about.html" # the agent's product write, inside work_root
 out="$(run_pty "FORGE_REPOS_CONFIG='$REPOSCFG' '$RT' finish")"
-ttbr="$(git -C "$TGT" for-each-ref --format='%(refname:short)' 'refs/heads/task/*' | head -1)"
-[ -n "$ttbr" ] && pass || fail "target task branch created in the TARGET repo"
+ttbr="$(git -C "$TGT" for-each-ref --format='%(refname:short)' 'refs/heads/forge/agent/builder/*' | head -1)"
+[ -n "$ttbr" ] && pass || fail "target builder branch created in the TARGET repo (Phase 3: forge/agent/builder/<id>-<slug>)"
 tfiles="$(git -C "$TGT" ls-tree -r --name-only "$ttbr" 2>/dev/null)"
 printf '%s\n' "$tfiles" | grep -qx "about.html" && pass || fail "target commit carries the product write (about.html)"
 printf '%s\n' "$tfiles" | grep -qE '(^|/)\.beads/|(^|/)harness/|(^|/)\.claude/' && fail "PRISTINE VIOLATION: forge path in the target commit" || pass

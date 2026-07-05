@@ -206,6 +206,11 @@ cmd_start() {
     _tc="$(realpath "$(git -C "$tpath" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" 2>/dev/null)"
     if [ -z "$_tc" ] || [ "$_tc" != "$_fc" ]; then
       repo="$tpath" # TARGET build (distinct git store)
+      # Phase 3: TARGET-build branches use the trusted namespace <ns>/builder/<id>-<slug> (default
+      # forge/agent/builder/...) so the reconcile close binds id-bound via ARM 1b (beads-lib.sh); SELF
+      # builds keep task/<id>-<slug> (set at :181). The full-id canonicalization above + the non-empty slug
+      # keep the `-<slug>` delimiter the id-bound arm relies on (fx-aaaa cannot masquerade as fx-aaa).
+      branch="$(forge_target_branch_ns)/builder/$id-$slug"
       # T1: target builds are CONTAINER-DEFAULT (Phase 2). OS confinement comes from the bring-up +
       # liveness block below — on by default for a target build (FORGE_TARGET_CONTAINER, default 1; legacy
       # FORGE_TARGET_REQUIRE_CONTAINER honored; set either to 0 to opt out), and always for FORGE_SANDBOX=1. A
@@ -228,7 +233,7 @@ cmd_start() {
     # in_review, never closing (fail-closed, never a wrong-close, but confusing). Reject it up front. Scoped
     # to the feature path — FORGE_FEATURE_BRANCH is ignored for non-feature builds, so no over-block there.
     case "${FORGE_FEATURE_BRANCH:-}" in
-      task/*) die "FORGE_FEATURE_BRANCH must not start with 'task/' (reserved for single-task head refs; a task/-prefixed override would misroute assembly-folded beads into the reconcile skip-arm): ${FORGE_FEATURE_BRANCH}" ;;
+      task/* | "$(forge_target_branch_ns)"/*) die "FORGE_FEATURE_BRANCH must not start with 'task/' or the target branch namespace ($(forge_target_branch_ns)/) — both are reserved for single-task head refs; such a prefix would misroute assembly-folded beads into the reconcile skip-arm: ${FORGE_FEATURE_BRANCH}" ;;
     esac
     feat_branch="${FORGE_FEATURE_BRANCH:-feat/$(slugify "$(basename "$source_spec" .md)")}"
     base="$feat_branch"

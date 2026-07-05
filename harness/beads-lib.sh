@@ -138,23 +138,40 @@ forge_finish_record_pr() {  # <bead> <repo> <branch> <prurl> <harness-dir>
 # Extracted as pure string functions (no I/O) so the close decision is verifiable OFFLINE — no real PR yet
 # encodes a task/<id>- head ref and gh cannot be fixtured for it (fold24 calls these directly; fold18 model).
 #
-# forge_reconcile_id_bound <bead> <headref> <record_branch> — the 3-arm close dispatch keyed on the
-# gh-VOUCHED head ref (NEVER a record field). Returns 0 (close) / 1 (skip).
-#   ARM 1  headref == task/<bead>-*   -> CLOSE. Single-task, id-bound to THIS bead; consults NO record field.
-#   ARM 2  headref == task/*          -> SKIP.  The security-critical skip: a branch-field forgery points
-#          record.branch at a sibling's real merged task/<other>- PR, making headref==record_branch TRUE — so
-#          a task/ head ref that is not THIS bead's must be rejected BEFORE the record-match can fire. The
-#          id-match is a REQUIRED conjunct, never OR'd with headref==branch. Closes the branch-field forgery +
-#          the same-repo sibling re-point (arm-local; the single-task->feature steer stays the B2 residual).
+# forge_target_branch_ns — the TRUSTED target-repo branch namespace prefix (default "forge/agent"), read
+# ONLY from the enforce-protected harness/branches.config with the agent env STRIPPED first. A poisoned
+# FORGE_TARGET_BRANCH_NS (env) must not bend the reconcile head-ref pattern below: if it did, a forged head
+# ref could fall PAST the ARM-2 forgery-reject into the weaker ARM-3 record-match. Malformed prefix ->
+# fail-safe to the default. Self builds do NOT use this (they keep task/<id>-<slug>).
+forge_target_branch_ns() {
+  local cfg ns
+  cfg="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd)/branches.config"
+  ns="$(unset FORGE_TARGET_BRANCH_NS; [ -f "$cfg" ] && . "$cfg" 2>/dev/null; printf '%s' "${FORGE_TARGET_BRANCH_NS:-forge/agent}")"
+  case "$ns" in '' | *[!A-Za-z0-9/_-]* | /* | */*/*/* | */) ns="forge/agent" ;; esac
+  printf '%s' "$ns"
+}
+
+# forge_reconcile_id_bound <bead> <headref> <record_branch> — the close dispatch keyed on the gh-VOUCHED
+# head ref (NEVER a record field). Returns 0 (close) / 1 (skip). Two id-bound arms (self task/ + target
+# <ns>/builder/), one forgery-reject arm, one feat/-override record-match arm.
+#   ARM 1  headref == task/<bead>-*            -> CLOSE. SELF-build single-task, id-bound to THIS bead.
+#   ARM 1b headref == <ns>/builder/<bead>-*    -> CLOSE. TARGET-build single-task, id-bound to THIS bead.
+#          <ns> is the FIXED trusted prefix (no wildcard role) so a multi-segment head ref cannot smuggle
+#          another bead's id in — the `-` after <bead> is the prefix-collision guard (fx-aaaa != fx-aaa).
+#   ARM 2  headref == task/* OR <ns>/*         -> SKIP.  The security-critical skip: a branch-field forgery
+#          points record.branch at a SIBLING's real merged PR, making headref==record_branch TRUE — so any
+#          in-namespace head ref that is not THIS bead's must be rejected BEFORE the record-match can fire.
+#          The id-match is a REQUIRED conjunct, never OR'd with headref==branch.
 #   ARM 3  otherwise (feat/F, non-feat overrides like release-x) -> today's record-match headref==branch.
-#          Preserves folded-close AND non-feat overrides; still trusts the agent-writable record.branch (the
-#          documented B2 residual). The default MUST be record-match, never task-reconstruction — a
-#          non-`feat/` override would else misroute into ARM 1 and every folded close would fail (the catch-all record-match arm).
+#          Still trusts the agent-writable record.branch (the documented B2 residual). The default MUST be
+#          record-match, never branch-reconstruction, or every folded close would fail.
 forge_reconcile_id_bound() {
-  local bead="$1" headref="$2" rbranch="$3"
+  local bead="$1" headref="$2" rbranch="$3" ns nsrole
+  ns="$(forge_target_branch_ns)"; nsrole="$ns/builder"
   case "$headref" in
     "task/$bead-"*) return 0 ;;
-    "task/"*) return 1 ;;
+    "$nsrole/$bead-"*) return 0 ;;
+    "task/"* | "$ns/"*) return 1 ;;
     *) [ "$headref" = "$rbranch" ] && return 0 || return 1 ;;
   esac
 }

@@ -125,7 +125,10 @@ else
     # accept-gate.sh + intake.sh carry the marker namespace: on an initialized-but-uncommitted
     # instance whose SENTINEL_NS was renamed, the committed clone still parses the old namespace
     # while the working-tree fixtures emit the new one — overlay them so the split cannot appear.
-    for f in run-task.sh kill-switch.sh sandbox-lib.sh accept-gate.sh intake.sh sandbox/devcontainer.json; do
+    # Phase 3: run-task.sh calls forge_target_branch_ns (in beads-lib.sh) + reads branches.config, so both
+    # MUST be overlaid alongside run-task.sh — else the working-tree run-task calls a helper absent from the
+    # committed beads-lib. (The [ -f ] guard skips branches.config gracefully on a pre-Phase-3 E2E_REPO.)
+    for f in run-task.sh kill-switch.sh beads-lib.sh branches.config sandbox-lib.sh accept-gate.sh intake.sh sandbox/devcontainer.json; do
       [ -f "$E2E_REPO/harness/$f" ] && { mkdir -p "$(dirname "$CLV/harness/$f")"; cp "$E2E_REPO/harness/$f" "$CLV/harness/$f"; }
     done
     # FOLD #3: start captures+validates a github-shaped push origin (the forge is github-only via gh
@@ -345,6 +348,10 @@ else
   DCLD="$(mktemp -d -p "$TMPROOT")"
   git clone --no-hardlinks -q "$E2E_REPO" "$DCLD" 2>/dev/null
   cp "$DMF_RT" "$DCLD/harness/run-task.sh"; cp "$DMF_SL" "$DCLD/harness/sandbox-lib.sh"
+  # Phase 3: the working-tree run-task calls forge_target_branch_ns (beads-lib) + reads branches.config for
+  # the TARGET-build branch name — overlay both, else run-task calls a helper absent from the committed lib.
+  cp "$ROOT/harness/beads-lib.sh" "$DCLD/harness/beads-lib.sh"
+  [ -f "$ROOT/harness/branches.config" ] && cp "$ROOT/harness/branches.config" "$DCLD/harness/branches.config"
   # overlay the marker-parsing harness too (accept-gate/intake), so a renamed-but-uncommitted
   # SENTINEL_NS does not split the cloned parser (committed) from the working-tree fixture.
   for f in accept-gate.sh intake.sh; do [ -f "$E2E_REPO/harness/$f" ] && cp "$E2E_REPO/harness/$f" "$DCLD/harness/$f"; done
@@ -377,7 +384,7 @@ else
     mkdir -p "$DWT/.claude/agents" "$DWT/.beads" "$DWT/harness"
     printf 'e\n' > "$DWT/.claude/agents/evil.md"; printf 'x\n' > "$DWT/.beads/x.json"; printf '#!/bin/sh\n' > "$DWT/harness/evil.sh"
     dfo="$(cd "$DCLD" && FORGE_SANDBOX=1 FORGE_SKIP_INSTALL=1 FORGE_SANDBOX_IMAGE="$IMG" bash harness/run-task.sh finish 2>&1)"
-    dtbr="task/$did-$(basename "$DWT")"   # branch is now task/<id>-<slug> (was task/<slug>); $did is the bead id from :349
+    dtbr="forge/agent/builder/$did-$(basename "$DWT")"   # Phase 3: TARGET-build branch is forge/agent/builder/<id>-<slug>; $did is the bead id from :349
     dfiles="$(git -C "$DTGT" ls-tree -r --name-only "$dtbr" 2>/dev/null)"
     printf '%s\n' "$dfiles" | grep -qx "about.html" && ok "target-container H3 live: committed target diff CARRIES the product (about.html)" || no "target-container H3: product missing from target commit" "$dfiles"
     printf '%s\n' "$dfiles" | grep -qE '(^|/)\.claude/|(^|/)\.beads/|(^|/)harness/|(^|/)\.harness/' && no "target-container H3: PURITY VIOLATION — forge path in target commit" "$(printf '%s\n' "$dfiles"|grep -E '\.claude|\.beads|harness')" || ok "target-container H3 live: committed target diff has ZERO forge paths (H3 stripped them)"
