@@ -416,12 +416,16 @@ else
         elif ((.scope | type) != "array") or ((.scope | length) == 0) then "scope is missing or empty"
         elif ([.scope[] | select((type != "string") or (. == "") or startswith("/") or contains("..") or ((test("^[A-Za-z0-9._*?\\[\\]/-]+$")) | not))] | length) > 0
           then "scope entry " + ([.scope[] | select((type != "string") or (. == "") or startswith("/") or contains("..") or ((test("^[A-Za-z0-9._*?\\[\\]/-]+$")) | not))][0] | @json) + " is not a well-formed repo-relative glob"
-        elif ((.dod_tests | type) != "array") or ((.dod_tests | length) == 0) then "dod_tests is missing or empty"
+        elif ((.dod_tests | type) != "array") then "dod_tests is not an array"
         elif ([.dod_tests[] | select((type != "string") or contains("..") or ((test("^(tests|sandbox)(/[A-Za-z0-9][A-Za-z0-9._-]*)+(::[A-Za-z0-9][A-Za-z0-9 ._:-]*)?$")) | not))] | length) > 0
           then "dod_tests entry " + ([.dod_tests[] | select((type != "string") or contains("..") or ((test("^(tests|sandbox)(/[A-Za-z0-9][A-Za-z0-9._-]*)+(::[A-Za-z0-9][A-Za-z0-9 ._:-]*)?$")) | not))][0] | @json) + " is not a valid selector"
         elif ((.sc_evidence | type) != "array") or ((.sc_evidence | length) == 0) then "sc_evidence is missing or empty"
         elif ([.sc_evidence[] | select((type != "object") or ((.sc? | type) != "number") or ((.path? | type) != "string") or (.path == "") or (.path | startswith("/")) or (.path | contains("..")) or (((.path | test("^[A-Za-z0-9][A-Za-z0-9._/-]*$"))) | not))] | length) > 0
           then "sc_evidence entry " + ([.sc_evidence[] | select((type != "object") or ((.sc? | type) != "number") or ((.path? | type) != "string") or (.path == "") or (.path | startswith("/")) or (.path | contains("..")) or (((.path | test("^[A-Za-z0-9][A-Za-z0-9._/-]*$"))) | not))][0] | @json) + " is not a well-formed {sc, path}"
+        elif ([.sc_evidence[] | select(has("assert")) | .assert | select((type != "object") or ((.kind | type) != "string") or (((.kind == "contains") or (.kind == "absent") or (.kind == "sha256")) | not) or ((.value | type) != "string") or (.value == "") or (.value | test("[[:cntrl:]]")) or ((.kind == "sha256") and ((.value | test("^[0-9a-f]{64}$")) | not)) or (((.kind == "contains") or (.kind == "absent")) and ((.value | length) > 512)))] | length) > 0
+          then "an sc_evidence assert is malformed (P6a: kind must be contains|absent|sha256; value a non-empty single-line literal <=512 chars, or 64 lowercase-hex for sha256)"
+        elif (((.dod_tests | length) == 0) and ([.sc_evidence[] | select(has("assert"))] | length) == 0)
+          then "no-mechanical-proof (P6a): an empty dod_tests requires >=1 sc_evidence entry with an assert (contains|absent|sha256)"
         else empty end' <<<"$ANCHOR" 2>/dev/null)"
       ANCHOR_OK=1
       if ! jq -e . >/dev/null 2>&1 <<<"$ANCHOR"; then
@@ -553,8 +557,10 @@ fi
 mapfile -t SELS < <(jq -r '.dod_tests[]' <<<"$ANCHOR" 2>/dev/null)
 R_DOD="pass"
 if [ "${#SELS[@]}" -eq 0 ]; then
-  R_DOD="fail"
-  fail "dod-unreadable: validated anchor yielded zero dod_tests selectors (fail closed)"
+  # P6a: an empty dod_tests is legal — C0's grammar verified >=1 sc_evidence assert stands in as the
+  # mechanical proof (C3 runs it). Record the non-test disposition; do NOT fail (the for-loop below is a
+  # no-op over zero selectors, and the ">=1 proof" invariant is enforced in C0, checked in C3).
+  R_DOD="skipped-no-tests"
 fi
 SI=0
 FTS_LOG="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -688,6 +694,61 @@ while [ "$EI" -lt "$SCN" ]; do
     SCOFFJ="$(jq -c --arg p "$p" '. + [$p + " (empty)"]' <<<"$SCOFFJ")" || plumb_fail "audit-build: jq failed appending an sc offender"
     fail "sc-evidence: '$p' — empty: the staged blob has no content (or is unreadable — fail closed)"
     continue
+  fi
+  # ── P6a non-test evidence: an OPTIONAL assert on this entry is the mechanical DoD when dod_tests is
+  # empty. The checker is FIXED and gate-owned — `grep -F -q -e` (literal; -e makes the value a pattern,
+  # never a flag → injection-safe) or `sha256sum` (pure) — run over the STAGED blob (INDEX `:p` for
+  # staged/rescope, tree B `RB:p` for range, matching the presence checks above). NO author-supplied code
+  # executes (unlike a dod_tests selector). Bounded by the C2 timeout/kill-grace (never-hang). Only reached
+  # once the entry passed presence + non-symlink + non-empty; any error/timeout → fail closed. ──────────
+  A_KIND="$(jq -r --argjson i "$((EI - 1))" '.sc_evidence[$i].assert.kind // empty' <<<"$ANCHOR" 2>/dev/null)" || A_KIND=""
+  if [ -n "$A_KIND" ]; then
+    A_VAL="$(jq -r --argjson i "$((EI - 1))" '.sc_evidence[$i].assert.value // empty' <<<"$ANCHOR" 2>/dev/null)" || A_VAL=""
+    if [ "$MODE" = "range" ]; then A_BREF="$RB:$p"; else A_BREF=":$p"; fi
+    if [ -z "$A_VAL" ]; then
+      R_SC="fail"
+      SCOFFJ="$(jq -c --arg p "$p" '. + [$p + " (assert-value-empty)"]' <<<"$SCOFFJ")" || plumb_fail "audit-build: jq failed appending an sc offender"
+      fail "sc-evidence: '$p' — assert-value-empty: assert kind '$A_KIND' carries no value (C0 must reject this; fail closed)"
+    else
+      case "$A_KIND" in
+        contains)
+          # A_GRC = git cat-file rc (PIPESTATUS[0]); A_RC = timeout/grep rc (PIPESTATUS[1]). A read
+          # failure on EITHER side fails closed — the blob must be provably read AND the literal present.
+          forge_safe_git "$WT" "$GD" cat-file blob "$A_BREF" 2>/dev/null | timeout -k "$KG" "$T" grep -F -q -e "$A_VAL"
+          A_GRC="${PIPESTATUS[0]}" A_RC="${PIPESTATUS[1]}"
+          if [ "$A_GRC" != 0 ] || [ "$A_RC" != 0 ]; then
+            R_SC="fail"
+            SCOFFJ="$(jq -c --arg p "$p" '. + [$p + " (assert-contains-failed)"]' <<<"$SCOFFJ")" || plumb_fail "audit-build: jq failed appending an sc offender"
+            fail "sc-evidence: '$p' — assert-contains-failed: staged blob does not contain the declared literal, or could not be read (git rc $A_GRC, grep rc $A_RC; 124/137=timeout/killed — all fail closed)"
+          fi
+          ;;
+        absent)
+          # provably-absent = git READ succeeded (A_GRC 0) AND grep found nothing (A_RC 1). A cat-file
+          # read failure (A_GRC != 0) yields empty grep input -> grep rc 1, which must NOT read as
+          # "absent": require A_GRC 0 so an unread blob fails closed (matches the documented guarantee).
+          forge_safe_git "$WT" "$GD" cat-file blob "$A_BREF" 2>/dev/null | timeout -k "$KG" "$T" grep -F -q -e "$A_VAL"
+          A_GRC="${PIPESTATUS[0]}" A_RC="${PIPESTATUS[1]}"
+          if [ "$A_GRC" != 0 ] || [ "$A_RC" != 1 ]; then
+            R_SC="fail"
+            SCOFFJ="$(jq -c --arg p "$p" '. + [$p + " (assert-absent-failed)"]' <<<"$SCOFFJ")" || plumb_fail "audit-build: jq failed appending an sc offender"
+            fail "sc-evidence: '$p' — assert-absent-failed: the declared literal is present, or the blob could not be read (git rc $A_GRC, grep rc $A_RC; only git-rc 0 + grep-rc 1 = provably-absent — fail closed)"
+          fi
+          ;;
+        sha256)
+          A_ACTUAL="$(forge_safe_git "$WT" "$GD" cat-file blob "$A_BREF" 2>/dev/null | timeout -k "$KG" "$T" sha256sum | cut -d' ' -f1)" || A_ACTUAL=""
+          if [ -z "$A_ACTUAL" ] || [ "$A_ACTUAL" != "$A_VAL" ]; then
+            R_SC="fail"
+            SCOFFJ="$(jq -c --arg p "$p" '. + [$p + " (assert-sha256-mismatch)"]' <<<"$SCOFFJ")" || plumb_fail "audit-build: jq failed appending an sc offender"
+            fail "sc-evidence: '$p' — assert-sha256-mismatch: staged blob sha256 '$A_ACTUAL' != declared '$A_VAL'"
+          fi
+          ;;
+        *)
+          R_SC="fail"
+          SCOFFJ="$(jq -c --arg p "$p" '. + [$p + " (assert-kind-unknown)"]' <<<"$SCOFFJ")" || plumb_fail "audit-build: jq failed appending an sc offender"
+          fail "sc-evidence: '$p' — assert-kind-unknown: '$A_KIND' (C0 grammar must reject this before C3; fail closed)"
+          ;;
+      esac
+    fi
   fi
 done
 

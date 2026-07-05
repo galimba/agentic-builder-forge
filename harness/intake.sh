@@ -578,7 +578,7 @@ cmd_analyze() {
   #    '-rf'-shaped segments). The ::pattern form was removed (A2: it reserved a convention
   #    R-A calls undefined; the gate C2 never ran it). The explicit '..' check is redundant with
   #    the segment anchor but kept for the named cp-4-class error.
-  bad="$(printf '%s' "$json" | jq -r '.tasks[] | select((has("dod_tests") | not) or ((.dod_tests | type) != "array") or ((.dod_tests | length) == 0)) | "task \(.id // "?"): dod_tests is missing or empty — the mechanical DoD needs >=1 named runnable test"' | head -1)"
+  bad="$(printf '%s' "$json" | jq -r '.tasks[] | select((has("dod_tests") | not) or ((.dod_tests | type) != "array")) | "task \(.id // "?"): dod_tests is missing or not an array — declare it (use [] when the mechanical DoD is a non-test sc_evidence assert; P6a)"' | head -1)"
   [ -n "$bad" ] && die "analyze (invariant 8): $bad"
   bad="$(printf '%s' "$json" | jq -r '.tasks[] | .id as $t | .dod_tests[] | if type != "string" then "task \($t): dod_tests entry \(. | @json) is not a string" elif contains("..") then "task \($t): dod_tests entry \(. | @json) contains \"..\" — selectors are repo-relative (fail closed)" elif (test("^(tests|sandbox)(/[A-Za-z0-9][A-Za-z0-9._-]*)+$")) | not then "task \($t): dod_tests entry \(. | @json) is not a valid selector — expected (tests|sandbox)/<path> per templates/spec-template.md (Selector and glob formats)" else empty end' | head -1)"
   [ -n "$bad" ] && die "analyze (invariant 8): $bad"
@@ -596,6 +596,18 @@ cmd_analyze() {
   [ -n "$bad" ] && die "analyze (invariant 9): $bad"
   bad="$(printf '%s' "$json" | jq -r '.tasks[] | .id as $t | [.sc_evidence[]? | .sc? | select(type == "number")] as $cov | range(1; (.success_criteria | length) + 1) | select(. as $i | $cov | index($i) | not) | "task \($t): success_criteria #\(.) has no sc_evidence entry — uncovered SC (bidirectional, like FR<->task)"' | head -1)"
   [ -n "$bad" ] && die "analyze (invariant 9): $bad"
+  # 9 (P6a): an OPTIONAL assert on an sc_evidence entry is the NON-TEST mechanical proof — a FIXED
+  # gate-owned checker over the STAGED blob (grep -F / sha256sum; NO author code runs). Validate the
+  # grammar SYNTACTICALLY here (accept-gate.sh C3 RUNS it, exactly as inv 8 selectors are syntactic-only):
+  # kind in {contains,absent,sha256}; value a non-empty single-line literal (contains/absent, <=512, no
+  # control chars) or 64 lowercase-hex (sha256). Type-before-use ordering so no jq branch fails OPEN. The
+  # membership test is a plain disjunction, NOT `[..]|index(.kind)` (a pipe re-points `.` at the array).
+  bad="$(printf '%s' "$json" | jq -r '.tasks[] | .id as $t | .sc_evidence[] | select(has("assert")) | .assert | if type != "object" then "task \($t): sc_evidence assert must be an object {kind, value}" elif (.kind | type) != "string" then "task \($t): sc_evidence assert.kind must be a string" elif ((.kind == "contains") or (.kind == "absent") or (.kind == "sha256")) | not then "task \($t): sc_evidence assert.kind \(.kind | @json) must be one of contains|absent|sha256" elif (.value | type) != "string" then "task \($t): sc_evidence assert.value must be a string" elif (.value == "") then "task \($t): sc_evidence assert.value must be non-empty" elif (.value | test("[[:cntrl:]]")) then "task \($t): sc_evidence assert.value must be a single-line literal (no control characters)" elif (.kind == "sha256") and ((.value | test("^[0-9a-f]{64}$")) | not) then "task \($t): sc_evidence assert.value for kind sha256 must be 64 lowercase-hex chars" elif ((.kind == "contains") or (.kind == "absent")) and ((.value | length) > 512) then "task \($t): sc_evidence assert.value exceeds 512 chars" else empty end' | head -1)"
+  [ -n "$bad" ] && die "analyze (invariant 9): $bad"
+  # 8 (P6a): >=1 MECHANICAL PROOF per task — a non-empty dod_tests OR >=1 sc_evidence assert. An empty
+  # dod_tests with no assert is a bead with no mechanical DoD (would degrade the gate's C2 to a vacuous pass).
+  bad="$(printf '%s' "$json" | jq -r '.tasks[] | select(((.dod_tests | length) == 0) and ([.sc_evidence[] | select(has("assert"))] | length) == 0) | "task \(.id // "?"): no mechanical proof — an empty dod_tests requires >=1 sc_evidence entry with an assert (contains|absent|sha256)"' | head -1)"
+  [ -n "$bad" ] && die "analyze (invariant 8): $bad"
   # 9 (A3): every sc_evidence path must fall under >=1 scope glob — the SAME bash case-pattern
   # the acceptance gate's C1 uses (accept-gate.sh). A path NEW this task AND out of scope is an
   # UNSATISFIABLE contract at the gate (C3 stages it, C1 rejects it as out-of-scope). jq cannot

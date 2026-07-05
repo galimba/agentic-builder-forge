@@ -814,6 +814,191 @@ expect_rc 1 "c39b FAIL rc 1 (no knob -> contract-missing)"
 out_has "contract-missing" "c39b no knob: null metadata -> contract-missing (legacy path, not stripped)"
 audit_jq '.checks[0].detail == "contract-missing" and .legacy_bypass == false' "c39b audit contract-missing (null routed to legacy)"
 
+# ===================================================================================================
+# P6a — NON-TEST EVIDENCE: a typed sc_evidence.assert (contains|absent|sha256) is a FIXED gate-owned
+# checker over the STAGED blob; an empty dod_tests is legal iff >=1 assert stands in as the proof.
+# ===================================================================================================
+
+echo "== P6a-1: empty dod_tests + contains-assert MATCHES -> PASS; dod_tests=skipped-no-tests; still 5 checks =="
+SCA="$(jq -nc --arg p "sandbox/c60/ev.txt" '[{sc:1, path:$p, assert:{kind:"contains", value:"evidence"}}]')"
+std_setup 60 '["sandbox/**"]' '[]' "$SCA"
+printf 'the evidence is here\n' >"$WT/sandbox/c60/ev.txt"
+git -C "$WT" add sandbox/c60/ev.txt
+run_gate
+expect_rc 0 "P6a-1 PASS rc 0"
+out_has "accept-gate: PASS" "P6a-1 PASS message"
+audit_jq '.verdict == "PASS" and .checks[2].result == "skipped-no-tests"' "P6a-1 dod_tests skipped-no-tests, verdict PASS"
+audit_jq '(.checks | length) == 5 and (.checks | map(.name)) == ["contract","scope","dod_tests","sc_evidence","integrity"]' "P6a-1 audit still five named checks"
+audit_jq '.checks[3].result == "pass"' "P6a-1 sc_evidence (with assert) pass"
+
+echo "== P6a-2: empty dod_tests + contains-assert does NOT match -> FAIL assert-contains-failed =="
+SCA="$(jq -nc --arg p "sandbox/c61/ev.txt" '[{sc:1, path:$p, assert:{kind:"contains", value:"NEEDLE-NOT-PRESENT"}}]')"
+std_setup 61 '["sandbox/**"]' '[]' "$SCA"
+printf 'haystack without the needle\n' >"$WT/sandbox/c61/ev.txt"
+git -C "$WT" add sandbox/c61/ev.txt
+run_gate
+expect_rc 1 "P6a-2 FAIL rc 1"
+out_has "assert-contains-failed" "P6a-2 assert-contains-failed named"
+audit_jq '.checks[3].result == "fail" and (.checks[3].offenders | map(test("assert-contains-failed")) | any)' "P6a-2 sc_evidence fail in audit"
+
+echo "== P6a-3: empty dod_tests + NO assert -> FAIL no-mechanical-proof (C0 grammar) =="
+SCA="$(jq -nc --arg p "sandbox/c62/ev.txt" '[{sc:1, path:$p}]')"
+std_setup 62 '["sandbox/**"]' '[]' "$SCA"
+printf 'x\n' >"$WT/sandbox/c62/ev.txt"
+git -C "$WT" add sandbox/c62/ev.txt
+run_gate
+expect_rc 1 "P6a-3 FAIL rc 1"
+out_has "no-mechanical-proof" "P6a-3 no-mechanical-proof named"
+audit_jq '.checks[0].result == "fail" and .verdict == "FAIL"' "P6a-3 contract fail (C0 terminal)"
+
+echo "== P6a-4: empty dod_tests + sha256-assert MATCHES staged blob -> PASS =="
+printf 'exact-artifact-bytes\n' >"$T/tmp-sha-src.txt"
+SHA="$(sha256sum "$T/tmp-sha-src.txt" | cut -d' ' -f1)"
+SCA="$(jq -nc --arg p "sandbox/c63/ev.txt" --arg h "$SHA" '[{sc:1, path:$p, assert:{kind:"sha256", value:$h}}]')"
+std_setup 63 '["sandbox/**"]' '[]' "$SCA"
+cp "$T/tmp-sha-src.txt" "$WT/sandbox/c63/ev.txt"
+git -C "$WT" add sandbox/c63/ev.txt
+run_gate
+expect_rc 0 "P6a-4 PASS rc 0 (sha256 matches staged blob)"
+audit_jq '.verdict == "PASS" and .checks[3].result == "pass"' "P6a-4 sha256 assert pass"
+
+echo "== P6a-5: sha256-assert MISMATCH -> FAIL assert-sha256-mismatch =="
+BADSHA="$(printf 'a%.0s' $(seq 1 64))"
+SCA="$(jq -nc --arg p "sandbox/c64/ev.txt" --arg h "$BADSHA" '[{sc:1, path:$p, assert:{kind:"sha256", value:$h}}]')"
+std_setup 64 '["sandbox/**"]' '[]' "$SCA"
+printf 'whatever\n' >"$WT/sandbox/c64/ev.txt"
+git -C "$WT" add sandbox/c64/ev.txt
+run_gate
+expect_rc 1 "P6a-5 FAIL rc 1"
+out_has "assert-sha256-mismatch" "P6a-5 sha256 mismatch named"
+
+echo "== P6a-6a: absent-assert, literal ABSENT -> PASS =="
+SCA="$(jq -nc --arg p "sandbox/c65/ev.txt" '[{sc:1, path:$p, assert:{kind:"absent", value:"TODO"}}]')"
+std_setup 65 '["sandbox/**"]' '[]' "$SCA"
+printf 'clean content no marker\n' >"$WT/sandbox/c65/ev.txt"
+git -C "$WT" add sandbox/c65/ev.txt
+run_gate
+expect_rc 0 "P6a-6a PASS rc 0 (literal absent)"
+audit_jq '.verdict == "PASS"' "P6a-6a absent-assert pass"
+
+echo "== P6a-6b: absent-assert, literal PRESENT -> FAIL assert-absent-failed =="
+SCA="$(jq -nc --arg p "sandbox/c66/ev.txt" '[{sc:1, path:$p, assert:{kind:"absent", value:"TODO"}}]')"
+std_setup 66 '["sandbox/**"]' '[]' "$SCA"
+printf 'has a TODO marker\n' >"$WT/sandbox/c66/ev.txt"
+git -C "$WT" add sandbox/c66/ev.txt
+run_gate
+expect_rc 1 "P6a-6b FAIL rc 1 (literal present)"
+out_has "assert-absent-failed" "P6a-6b absent-assert-failed named"
+
+echo "== P6a-7: empty dod + assert but evidence NOT staged -> FAIL missing-from-index (phantom, assert never masks it) =="
+SCA="$(jq -nc --arg p "sandbox/c67/ev.txt" '[{sc:1, path:$p, assert:{kind:"contains", value:"evidence"}}]')"
+std_setup 67 '["sandbox/**"]' '[]' "$SCA"
+printf 'evidence present in worktree only\n' >"$WT/sandbox/c67/ev.txt"
+run_gate
+expect_rc 1 "P6a-7 FAIL rc 1"
+out_has "missing-from-index" "P6a-7 phantom evidence -> missing-from-index"
+
+echo "== P6a-8: malformed assert in the anchor (bad kind) -> FAIL C0 grammar =="
+SCA="$(jq -nc --arg p "sandbox/c68/ev.txt" '[{sc:1, path:$p, assert:{kind:"regex", value:"a.*b"}}]')"
+std_setup 68 '["sandbox/**"]' '[]' "$SCA"
+printf 'x\n' >"$WT/sandbox/c68/ev.txt"
+git -C "$WT" add sandbox/c68/ev.txt
+run_gate
+expect_rc 1 "P6a-8 FAIL rc 1"
+out_has "assert is malformed" "P6a-8 malformed-assert named (C0 grammar)"
+audit_jq '.checks[0].result == "fail"' "P6a-8 contract grammar fail"
+
+echo "== P6a-9: BOTH dod_tests AND an assert -> PASS (both enforced) =="
+SCA="$(jq -nc --arg p "sandbox/c69/ev.txt" '[{sc:1, path:$p, assert:{kind:"contains", value:"evidence"}}]')"
+std_setup 69 '["sandbox/**"]' '["sandbox/c69/t.sh"]' "$SCA"
+printf 'the evidence\n' >"$WT/sandbox/c69/ev.txt"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$WT/sandbox/c69/t.sh"
+git -C "$WT" add sandbox/c69/ev.txt sandbox/c69/t.sh
+run_gate
+expect_rc 0 "P6a-9 PASS rc 0 (dod_tests run AND assert enforced)"
+audit_jq '.checks[2].result == "pass" and .checks[3].result == "pass"' "P6a-9 both dod_tests and sc_evidence pass"
+
+echo "== P6a-10: bead metadata.accept.assert != spec anchor -> FAIL contract-drift (R-F over the nested assert) =="
+N=70
+TJ="$(mk_tj 70 '["sandbox/**"]' '[]' "$(jq -nc --arg p "sandbox/c70/ev.txt" '[{sc:1,path:$p,assert:{kind:"contains",value:"STRICT-LITERAL"}}]')")"
+mk_spec 70 "$TJ"
+drift_slice="$(jq -c '{scope, dod_tests, sc_evidence: [.sc_evidence[0] | .assert.value = "lax"]}' <<<"$TJ")"
+meta70="$(jq -nc --arg s "specs/case70.md" --argjson a "$drift_slice" '{source_spec:$s, task_id:"T001", accept:$a}')"
+BEAD="$(mint "case 70" "$meta70")"
+WT="$T/wt70"
+git -C "$T" worktree add "$WT" -b case70 "$BASE" >/dev/null 2>&1
+mkdir -p "$WT/sandbox/c70"
+printf 'STRICT-LITERAL here\n' >"$WT/sandbox/c70/ev.txt"
+git -C "$WT" add sandbox/c70/ev.txt
+run_gate
+expect_rc 1 "P6a-10 FAIL rc 1"
+out_has "contract-drift" "P6a-10 assert value drift -> contract-drift (anchor != cache)"
+
+echo "== P6a-11: assert is load-bearing — a PASSING dod_test + a FAILING assert -> FAIL =="
+SCA="$(jq -nc --arg p "sandbox/c71/ev.txt" '[{sc:1,path:$p,assert:{kind:"contains",value:"MUST-BE-PRESENT"}}]')"
+std_setup 71 '["sandbox/**"]' '["sandbox/c71/t.sh"]' "$SCA"
+printf 'this blob lacks the literal\n' >"$WT/sandbox/c71/ev.txt"
+printf '#!/usr/bin/env bash\nexit 0\n' >"$WT/sandbox/c71/t.sh"
+git -C "$WT" add sandbox/c71/ev.txt sandbox/c71/t.sh
+run_gate
+expect_rc 1 "P6a-11 FAIL rc 1 (assert enforced despite a passing dod_test)"
+out_has "assert-contains-failed" "P6a-11 assert enforced alongside dod_tests"
+audit_jq '.checks[2].result == "pass" and .checks[3].result == "fail"' "P6a-11 dod_tests pass, sc_evidence(assert) fail"
+
+echo "== P6a-12: assert value with a leading dash + subshell metachars — matched LITERALLY, no code runs (canary) =="
+INJ='-rf $(touch p6a-canary)'
+SCA="$(jq -nc --arg p "sandbox/c72/ev.txt" --arg v "$INJ" '[{sc:1,path:$p,assert:{kind:"contains",value:$v}}]')"
+std_setup 72 '["sandbox/**"]' '[]' "$SCA"
+printf 'prefix %s suffix\n' "$INJ" >"$WT/sandbox/c72/ev.txt"
+git -C "$WT" add sandbox/c72/ev.txt
+run_gate
+expect_rc 0 "P6a-12 PASS rc 0 (metachar/dash literal present, matched via grep -F -e)"
+if [ ! -e "$WT/p6a-canary" ] && [ ! -e "$T/p6a-canary" ] && [ ! -e "p6a-canary" ]; then ok; else no "P6a-12 canary: the assert value must NEVER be evaluated by a shell"; fi
+SCA="$(jq -nc --arg p "sandbox/c72b/ev.txt" --arg v "$INJ" '[{sc:1,path:$p,assert:{kind:"contains",value:$v}}]')"
+std_setup 72b '["sandbox/**"]' '[]' "$SCA"
+printf 'a clean blob without it\n' >"$WT/sandbox/c72b/ev.txt"
+git -C "$WT" add sandbox/c72b/ev.txt
+run_gate
+expect_rc 1 "P6a-12b FAIL rc 1 (metachar literal absent, still no code)"
+
+echo "== P6a-13: STAGED symlink evidence WITH an assert -> FAIL symlink (assert never masks a phantom) =="
+SCA="$(jq -nc --arg p "sandbox/c73/ev.txt" '[{sc:1,path:$p,assert:{kind:"contains",value:"anything"}}]')"
+std_setup 73 '["sandbox/**"]' '[]' "$SCA"
+ln -s /etc/hostname "$WT/sandbox/c73/ev.txt"
+git -C "$WT" add sandbox/c73/ev.txt
+run_gate
+expect_rc 1 "P6a-13 FAIL rc 1"
+out_has "symlink" "P6a-13 symlink caught before the assert"
+
+echo "== P6a-14: staged EMPTY evidence WITH an assert -> FAIL empty (assert never masks a phantom) =="
+SCA="$(jq -nc --arg p "sandbox/c74/ev.txt" '[{sc:1,path:$p,assert:{kind:"contains",value:"anything"}}]')"
+std_setup 74 '["sandbox/**"]' '[]' "$SCA"
+: >"$WT/sandbox/c74/ev.txt"
+git -C "$WT" add sandbox/c74/ev.txt
+run_gate
+expect_rc 1 "P6a-14 FAIL rc 1"
+out_has "empty" "P6a-14 empty blob caught before the assert"
+
+echo "== P6a-15: --mode range + empty dod_tests + contains-assert over tree B -> PASS; negative -> FAIL =="
+SCA="$(jq -nc --arg p "sandbox/c75/ev.txt" '[{sc:1,path:$p,assert:{kind:"contains",value:"range-evidence"}}]')"
+std_setup 75 '["sandbox/**"]' '[]' "$SCA"
+printf 'range-evidence present\n' >"$WT/sandbox/c75/ev.txt"
+git -C "$WT" add sandbox/c75/ev.txt
+git -C "$WT" -c user.email=t@t -c user.name=t commit -q -m "c75 tip"
+RTIP="$(git -C "$WT" rev-parse HEAD)"
+run_gate_args --bead "$BEAD" --worktree "$WT" --base-sha "$BASE" --mode range --range "$BASE..$RTIP"
+expect_rc 0 "P6a-15 range PASS rc 0 (assert over tree B)"
+audit_jq '.mode == "range" and .verdict == "PASS" and .checks[2].result == "skipped-no-tests" and .checks[3].result == "pass"' "P6a-15 range: dod skipped, assert pass"
+SCA="$(jq -nc --arg p "sandbox/c76/ev.txt" '[{sc:1,path:$p,assert:{kind:"contains",value:"NOT-IN-TREE-B"}}]')"
+std_setup 76 '["sandbox/**"]' '[]' "$SCA"
+printf 'something else entirely\n' >"$WT/sandbox/c76/ev.txt"
+git -C "$WT" add sandbox/c76/ev.txt
+git -C "$WT" -c user.email=t@t -c user.name=t commit -q -m "c76 tip"
+RTIP="$(git -C "$WT" rev-parse HEAD)"
+run_gate_args --bead "$BEAD" --worktree "$WT" --base-sha "$BASE" --mode range --range "$BASE..$RTIP"
+expect_rc 1 "P6a-15b range FAIL rc 1 (assert literal absent in tree B)"
+out_has "assert-contains-failed" "P6a-15b range assert enforced over tree B"
+
 echo
 echo "==== $PASS passed, $FAIL failed (gate: $GATE_SRC) ===="
 [ "$FAIL" = 0 ]

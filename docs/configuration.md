@@ -92,6 +92,19 @@ by hand; re-run ensure.
 | `FORGE_UNATTENDED=1` | unattended posture: implies strict gate |
 | `BD_CLOSED_WINDOW` | days of closed tasks shown in the board Done lane |
 
+### Non-test evidence (P6a)
+
+The per-bead acceptance contract is authored in the spec Task Breakdown, not here — the field grammar
+is normative in `templates/spec-template.md` and enforced identically by `intake.sh` `analyze` and
+`accept-gate.sh`. One seam is worth flagging alongside the gate's runtime bound: an `sc_evidence` entry
+may carry an optional `assert: {kind, value}`, where `kind` is `contains` | `absent` | `sha256`. An
+empty `dod_tests` is legal **iff** ≥1 `sc_evidence` entry declares an `assert` (the ≥1-mechanical-proof
+rule) — this lets a docs/config task prove itself without a runnable test. The gate runs a **fixed,
+gate-owned** checker over the staged blob — `git cat-file blob :path | grep -F` for `contains`/`absent`,
+`sha256sum` for `sha256` — so **no author-supplied code executes** (unlike a `dod_tests` selector). It
+reads the **index** (worktree-only, symlink, or empty evidence still fails as phantom) and is bounded by
+`FORGE_MECHGATE_TIMEOUT`. This is authored per bead, not a config knob.
+
 ## What is NOT configurable (on purpose)
 
 - The enforcement floor's deny rules and self-protection (change = human PR, reviewed)
