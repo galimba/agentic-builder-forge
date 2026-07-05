@@ -177,6 +177,24 @@ case "$FORGE_TARGET_BRANCH_NS" in
   '' | *[!A-Za-z0-9/_-]* | /* | */ | task | task/*)
     echo "ERROR: invalid branch namespace '${FORGE_TARGET_BRANCH_NS}'. Use [A-Za-z0-9/_-], no leading/trailing slash, not 'task'."; exit 2 ;;
 esac
+# Optional read-only Vault (P7): a sibling knowledge repo, advisory + gate-blind. Blank = none (common).
+ctx "" \
+    "Optional: a read-only Vault (sibling knowledge repo) the architect reads for context. It is" \
+    "ADVISORY — it never drives acceptance, bead/branch state, security, or the merge. Blank for none."
+# NOT via ask(): the vault is OPTIONAL, so an empty value must be allowed even in non-interactive mode
+# (ask() treats empty-with-no-default as required-missing and aborts — that would make the vault required).
+if [ "$NONINTERACTIVE" = "1" ]; then
+    VAULT_PATH="${FORGE_INIT_VAULT:-}"
+else
+    read -rp "Optional read-only Vault — ABSOLUTE path to a knowledge repo, or blank for none: " VAULT_PATH
+fi
+if [ -n "${VAULT_PATH:-}" ]; then
+  case "$VAULT_PATH" in
+    /*) printf 'knowledge=%s\n' "$VAULT_PATH" > "${FORGE_ROOT}/harness/vault.config"
+        echo "  wrote harness/vault.config (knowledge=${VAULT_PATH}) — advisory, read-only, gate-blind" ;;
+    *)  echo "  NOTE: Vault path '${VAULT_PATH}' is not absolute — skipped (the Vault must be an absolute path; see harness/vault.config.example)" ;;
+  esac
+fi
 ctx "" \
     "Container topology (Phase 2). Target-repo builds run in a networked isolation container by default." \
     "These are ENV-ONLY knobs (read at runtime with these defaults); init records your choice and prints" \

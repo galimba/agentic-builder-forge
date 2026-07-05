@@ -1,0 +1,18 @@
+# harness/vault.config — OPTIONAL read-only Vault locations (P7). One `<name>=/absolute/path` per line.
+#
+# The Vault is a sibling knowledge repo (human-curated context/memory), READ-ONLY to the entire Forge by
+# convention. This file is OPTIONAL — absent means NO vault (never an error). Paths are ABSOLUTE (a
+# relative or '..'-bearing path is out of forge scope and is skipped by harness/vault.sh). The real
+# harness/vault.config is gitignored instance data; this .example is the committed template.
+#
+# SETUP (optional):
+#   cp harness/vault.config.example harness/vault.config
+#   # then set each vault to its absolute path ON THIS HOST.
+#
+# The Forge only ever READS the vault for context: `harness/vault.sh paths` resolves the locations and an
+# agent Reads the content with its own tools. The vault NEVER drives acceptance, bead state, branch state,
+# security policy, or merge authority — the accept-gate is vault-blind, `bd` is the authoritative task
+# state, and a human merges. To ADD durable vault content, a human mints a `[VAULT-PROPOSAL]` bead; the
+# Forge never writes the vault.
+#
+# knowledge=/absolute/path/to/my-vault

@@ -33,7 +33,9 @@ for the Task Breakdown.
 - **Write only under the specs tree** — `specs/**` (your spec, plus `understanding.md` and `restatement.md`
   beside it), and nothing else. You never touch code or `sandbox/` (the builder), the harness
   (`harness/**`, `.harness/**`), the hooks or settings (`.claude/**`), or the ledger (`.beads/**`). The deny
-  hook mechanically blocks the vault, `.git/`, `.beads/`, `harness/`, and `.claude/` for everyone; the
+  hook mechanically blocks `.git/`, `.beads/`, `harness/`, and `.claude/` for everyone (the sibling vault is
+  OUT of forge scope — the floor makes **no** vault claim; it is read-only to the Forge by convention, not by
+  the deny hook — see `tests/boundary/fold28` and the honesty seam); the
   `specs/**` confinement becomes a mechanical gate in a planned hardening pass (see the honesty seam) — until
   then staying within `specs/**` beyond that floor is your discipline.
 - **Never mint beads, never run `bd`, never self-ratify.** Bead minting is the converter's job.
@@ -44,12 +46,15 @@ for the Task Breakdown.
   invocations). Honest residual — an agent that allocates a PTY **and** routes through a wrapper file is
   not caught by these; that vector is the OS-confinement class deferred to the seam below. You also do not
   run `intake.sh convert`.
-- **If your organization keeps a sibling knowledge repo (e.g. `../my-vault`), it is read-only to the
-  entire Forge — you included — forever.** Such a vault is read-only to every Forge agent and all
-  machinery, in perpetuity. You READ it — and the target repo(s) — for constraints and context. When you
-  surface a durable decision that belongs in the vault, you do NOT write it: as an optional convention,
-  record a `[VAULT-PROPOSAL · <area>]` entry in `## Assumptions` with a **Bead draft** (the title and
-  body a human would mint), and a human reviews and mints it.
+- **If your organization keeps a sibling knowledge repo (the optional Vault), it is read-only to the
+  entire Forge — you included — forever.** Resolve its location(s) with `harness/vault.sh paths` (empty
+  when none is configured — the Vault is optional); READ it — and the target repo(s) — for constraints
+  and context with your own tools. It is read-only to every Forge agent and all machinery, in perpetuity,
+  and it is **advisory**: it never drives acceptance, bead state, branch state, security policy, or the
+  merge — the accept-gate is vault-blind and `bd` is authoritative. When you surface a durable decision
+  that belongs in the vault, you do NOT write it: as an optional convention, record a
+  `[VAULT-PROPOSAL · <area>]` entry in `## Assumptions` with a **Bead draft** (the title and body a human
+  would mint), and a human reviews and mints it.
 - **Cite the spec, not your memory.** Every requirement and criterion must be answerable from the
   objective, the clarifications, or a stated assumption — not from unstated context.
 

@@ -149,6 +149,15 @@ Both fail closed; neither opens a hole.
   not adjudicated; only a relative `../my-vault/…` write is denied, and that is via the general
   `..`-unverifiable rule, not a vault claim. (An earlier "vault is read-only, enforced" claim was
   removed precisely because it was leaky and the floor could not keep it.)
+  - **Read side (P7).** The vault is now **optionally configurable** (`harness/vault.config`, a
+    gitignored `<name>=/absolute/path` map) and resolvable through a **read-only, paths-only** helper
+    (`harness/vault.sh paths` prints the configured absolute existing dirs; `doctor` summarizes
+    "configured N; present M"). It reads no vault *content*, never writes, returns no verdict, and is
+    invoked by no gate, reconcile, branch, or floor path — so it stays **advisory and gate-blind**:
+    absent config, the loop runs unchanged; present config never drives acceptance, bead, branch,
+    security, or merge authority. Read-only-*from-the-Forge* remains a **convention**, not an enforced
+    guarantee — the deny floor still makes **no** vault claim (the note above stands unchanged), and the
+    leaky "enforced" wording is deliberately not reintroduced.
 - **Network egress** — **not controlled by default.** The container is networked
   (`FORGE_SANDBOX_NETWORK=bridge`) so agents can reach package registries, GitHub, and documentation;
   set `FORGE_SANDBOX_NETWORK=none` to restore container-level egress-deny. Egress control is otherwise

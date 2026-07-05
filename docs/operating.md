@@ -54,6 +54,14 @@ Set `FORGE_SANDBOX_NETWORK=none` to restore container-level egress-deny. The kno
 spec Header and the intake sentinel, surfaced as a scaffold-time hint; the acceptance gate is
 **profile-blind** and never reads it.
 
+You may optionally configure a **read-only Vault** — a sibling human-curated knowledge repo — via
+`harness/vault.config` (a `<name>=/absolute/path` map; gitignored instance data, copy from
+`harness/vault.config.example`). `harness/vault.sh paths` resolves the configured, existing dirs
+(absolute paths only, one per line; it reads no vault content and never writes), and `doctor` surfaces
+a **vault INFO line** (`configured N; present M`, or `none` when unset). The architect reads it for
+**context** during decomposition. It is purely **advisory, gate-blind, and optional**: no acceptance,
+bead, branch, security, or merge decision reads it, and an absent config leaves the loop unchanged.
+
 ### Review
 
 | Variable | Default | Effect |
