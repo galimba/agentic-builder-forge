@@ -38,9 +38,14 @@ Two things init deliberately does NOT do:
 ## 3. Verify
 
 ```bash
-bash .forge/scripts/doctor.sh --post-init   # no unfilled placeholders, ledger empty+valid, wiring OK
+bash .forge/scripts/doctor.sh --post-init   # placeholders filled, ledger empty+valid, wiring OK, bd+gh present
+#   add --container to also require docker + devcontainer (container-proof mode)
 bash tests/run-all.sh                       # the canonical gate: PASS everywhere, SKIP only where a runtime is absent
 ```
+
+`doctor --post-init` now fails if `bd` or `gh` is missing (they are load-bearing for the task lifecycle
+and the PR flow); Node/pnpm and the container toolchain warn but do not fail (add `--container` to make the
+container toolchain required).
 
 ## 4. Point it at your code
 
