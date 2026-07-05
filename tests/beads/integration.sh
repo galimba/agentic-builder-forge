@@ -277,7 +277,7 @@ tinj() { jq --arg id "$1" --arg tr "$2" '. + [{id:$id, title:$id, status:"open",
 # --- target START: worktree of the TARGET, work_root recorded ---
 # ATTENDED via pty: Item-4's preclaim gate runs BEFORE the self/target classification, so it gates EVERY
 # start (self AND target). The pty exempts it; FORGE_REPOS_CONFIG passes through as a shell prefix.
-out="$(run_pty "FORGE_REPOS_CONFIG='$REPOSCFG' '$RT' start fx-tgt")"
+out="$(run_pty "FORGE_TARGET_CONTAINER=0 FORGE_REPOS_CONFIG='$REPOSCFG' '$RT' start fx-tgt")"
 rc=$?
 [ "$rc" -eq 0 ] && pass || fail "target start exit 0 (rc=$rc): $out"
 twt="$(jq -r '.worktree // empty' "$SENT" 2>/dev/null)"
