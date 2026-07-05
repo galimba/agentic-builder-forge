@@ -2,30 +2,36 @@
 # ==============================================================================
 # FORGE DOCTOR — structural diagnostics for the build-harness.
 #
-#   bash .forge/scripts/doctor.sh              # at-rest OR initialized: structure checks
-#   bash .forge/scripts/doctor.sh --post-init  # strict: proves init completed correctly
+#   bash .forge/scripts/doctor.sh              # at-rest OR initialized: structure + dependency preflight
+#   bash .forge/scripts/doctor.sh --post-init  # strict: proves init completed; bd/gh absence FAILs
+#   bash .forge/scripts/doctor.sh --container  # container-proof: docker/devcontainer absence FAILs
 #   bash .forge/scripts/doctor.sh --gate       # also run the canonical test gate
 #
-# At rest (fresh clone, before init) placeholders are EXPECTED and the ledger is
-# absent — that is healthy. --post-init makes those hard failures instead.
+# At rest (fresh clone, before init) placeholders are EXPECTED, the ledger is
+# absent, and bd/gh/docker may be missing — that is healthy (info/warn, never fail;
+# the CI at-rest contract). --post-init makes placeholders/ledger AND missing bd/gh
+# hard failures; --container additionally requires the container toolchain.
 # ==============================================================================
 set -u
 
 FORGE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 POST_INIT=0
 RUN_GATE=0
+REQUIRE_CONTAINER=0
 for arg in "$@"; do
     case "$arg" in
         --post-init) POST_INIT=1 ;;
         --gate) RUN_GATE=1 ;;
-        *) echo "usage: doctor.sh [--post-init] [--gate]"; exit 2 ;;
+        --container | --require-container) REQUIRE_CONTAINER=1 ;;
+        *) echo "usage: doctor.sh [--post-init] [--gate] [--container]"; exit 2 ;;
     esac
 done
 
-PASS=0; FAIL=0; INFO=0
+PASS=0; FAIL=0; INFO=0; WARN=0
 ok()   { PASS=$((PASS+1)); printf '  OK   %s\n' "$1"; }
 bad()  { FAIL=$((FAIL+1)); printf '  FAIL %s\n' "$1"; }
 info() { INFO=$((INFO+1)); printf '  --   %s\n' "$1"; }
+warn() { WARN=$((WARN+1)); printf '  WARN %s\n' "$1"; }   # advisory — never fails the run
 
 echo "== forge doctor =="
 
@@ -41,6 +47,43 @@ else
         info "not initialized yet (expected for a fresh template clone; run .forge/scripts/init.sh)"
     fi
 fi
+
+# ---- 1b. dependency preflight (Phase 5b) -------------------------------------
+# Proves RUNNABILITY, not just structure. Lifecycle-critical tools (bd, gh) FAIL under --post-init and are
+# info at rest — a fresh template clone or CI runner may lack them, and the CI job runs bare doctor.sh on an
+# uninitialized checkout (the at-rest contract). The JS toolchain + the selected reviewer backend WARN
+# (environment-dependent, never fail). The container toolchain (docker/devcontainer) WARN/SKIPs unless
+# --container (an explicit container-proof mode) is requested.
+echo "== dependency preflight =="
+have() { command -v "$1" >/dev/null 2>&1; }
+# lifecycle-critical: FAIL under --post-init, info at rest.
+for _pair in "bd|the task ledger (claim / close / reconcile)" "gh|the PR flow + close-on-merge reconcile"; do
+    _bin="${_pair%%|*}"; _why="${_pair#*|}"
+    if have "$_bin"; then ok "${_bin} present — ${_why}"
+    elif [[ "$POST_INIT" == 1 ]]; then bad "${_bin} NOT found — required for ${_why}; install it before first use"
+    else info "${_bin} not found — needed at runtime for ${_why} (ok on an uninitialized template)"
+    fi
+done
+# JS toolchain + the always-needed basics: WARN (never fail — the lifecycle degrades, it does not vanish).
+have git  || warn "git not found — the harness cannot operate without it"
+have jq   || warn "jq not found — the deny hook + harness scripts fail closed without it"
+have node || warn "node not found — the default 'typescript' target + the harness test suites need Node.js >= 18.18"
+have pnpm || warn "pnpm not found — the default 'typescript' target uses pnpm"
+# the SELECTED reviewer backend's CLI: WARN if absent (first review run is the earliest failure point).
+_rb="$(sed -n 's/^REVIEWER_BACKEND="\${REVIEWER_BACKEND:-\([a-z-]*\)}".*/\1/p' "${FORGE_ROOT}/harness/reviewers.config" 2>/dev/null | head -1)"
+case "$_rb" in
+    claude-fresh) have claude || warn "reviewer backend 'claude-fresh' selected but 'claude' is not on PATH" ;;
+    ollama)       have ollama || warn "reviewer backend 'ollama' selected but 'ollama' is not on PATH (also pull a model)" ;;
+    codex)        have codex  || warn "reviewer backend 'codex' selected but 'codex' is not on PATH" ;;
+    "")           info "reviewer backend not resolvable from harness/reviewers.config (skipping backend probe)" ;;
+esac
+# container toolchain: WARN/SKIP unless --container (explicit container-proof mode makes it FAIL).
+for _bin in docker devcontainer; do
+    if have "$_bin"; then ok "${_bin} present — container builds available"
+    elif [[ "$REQUIRE_CONTAINER" == 1 ]]; then bad "${_bin} NOT found — required in container-proof mode (--container)"
+    else warn "${_bin} not found — needed only for container builds (FORGE_SANDBOX=1 / container-default targets); SKIP"
+    fi
+done
 
 # ---- 2. residual placeholders -------------------------------------------------
 # Tracked markdown + .github files must carry NO unfilled {{TOKENS}} after init.
@@ -190,5 +233,5 @@ if [[ "$RUN_GATE" == 1 ]]; then
 fi
 
 echo ""
-echo "== doctor: ${PASS} ok, ${FAIL} failed, ${INFO} informational =="
+echo "== doctor: ${PASS} ok, ${FAIL} failed, ${WARN} warn, ${INFO} informational =="
 [[ "$FAIL" -eq 0 ]]
