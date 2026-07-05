@@ -123,7 +123,7 @@ The defaults encode one working shape of the harness; every seam you're meant to
 
 ## The Honest Boundary
 
-The floor is deny-by-default hooks plus a self-minting session witness — it deterministically blocks the enumerated dangerous shapes, but it is a **guardrail / tripwire**, not complete confinement: a textual classifier of tool calls, **not an airtight sandbox against a determined adversary**. The isolation container raises the blast-radius floor (workspace / filesystem / process isolation), but it is **not airtight either** — even a networked container would not by itself prevent credential misuse, GitHub-authority misuse, exfiltration, or target-repo mutation. The one always-present release boundary is the **human merge**. The reviewer is **optional and advisory by design** — its findings never gate a merge. The test gate is the sole mechanical completion authority: no run reaches a PR while tests are red. And humans hold both ends of the loop — a human ratifies every spec at intake, and a human merges every PR. Read [`docs/limitations.md`](docs/limitations.md) before relying on the Forge for anything security-sensitive; it enumerates what is mechanically enforced, what is best-effort, and what is convention.
+The floor is deny-by-default hooks plus a self-minting session witness — it deterministically blocks the enumerated dangerous shapes, but it is a **guardrail / tripwire**, not complete confinement: a textual classifier of tool calls, **not an airtight sandbox against a determined adversary**. The isolation container raises the blast-radius floor (workspace / filesystem / process isolation), but it is **not airtight either** — even a networked container would not by itself prevent credential misuse, GitHub-authority misuse, exfiltration, or target-repo mutation. The one always-present release boundary is the **human merge**. The reviewer is **optional and advisory by design** — its findings never gate a merge. The test gate is the sole mechanical completion authority: no run reaches a PR while tests are red. And humans hold both ends of the loop — a human ratifies every spec at intake, and a human merges every PR. Read [`docs/limitations.md`](docs/limitations.md) before relying on the Forge for anything security-sensitive; it enumerates what is mechanically enforced, what is best-effort, and what is convention. For the crisp **claim↔test** index — every guarantee, tripwire, and non-claim mapped to the test that proves it — see [`docs/deny-floor.md`](docs/deny-floor.md).
 
 **Container model.** Target-repo builds run in a **networked isolation container by default**
 (`FORGE_TARGET_CONTAINER=1`; the legacy `FORGE_TARGET_REQUIRE_CONTAINER=1` is honored). Unattended runs
@@ -144,6 +144,7 @@ read-only enforcement mounts, dropped caps, and an unprivileged user.
 | [`docs/development.md`](docs/development.md) | How the harness itself is changed safely. |
 | [`docs/configuration.md`](docs/configuration.md) | Every config seam, field by field. |
 | [`docs/limitations.md`](docs/limitations.md) | The complete honest boundary, every known limitation, tagged. |
+| [`docs/deny-floor.md`](docs/deny-floor.md) | The claim↔test classification: each guarantee / tripwire / non-claim + its proving test. |
 
 `init.sh` also renders an onboarding doc into `docs/` with your instance's own values.
 

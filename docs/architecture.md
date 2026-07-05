@@ -18,7 +18,8 @@ is a bead.
 
 The Forge stacks several independent layers. Each is deterministic and fails closed. No single layer
 is claimed to be complete; they overlap deliberately, and the honest gaps between them are the
-subject of [`limitations.md`](limitations.md).
+subject of [`limitations.md`](limitations.md). For the per-claim classification — each layer's
+guarantees, tripwires, and non-claims mapped to their proving tests — see [`deny-floor.md`](deny-floor.md).
 
 | # | Tier | Where | What it enforces | Reach |
 | --- | --- | --- | --- | --- |

@@ -4,6 +4,12 @@ This is the honest boundary of the Forge, stated plainly. It is the most importa
 set: the code's own comments are more careful about what the harness does and does not do than any
 marketing would be, and this page matches the code, not the marketing.
 
+> For the crisp, machine-checked **claim↔test index** — every guarantee, tripwire, and non-claim mapped
+> to the `test:*` suite that proves it — see [`deny-floor.md`](deny-floor.md). This page is the prose
+> depth behind it (the reasoning and the full escape-shape detail); that page is the testable spine, and
+> `test:floor-claims` fails closed if a claim ever cites a test that does not exist or a load-bearing
+> mechanism is silently removed.
+
 Read it as three questions:
 
 1. **What is mechanically enforced?** (deterministic, no model judgment, fails closed)
