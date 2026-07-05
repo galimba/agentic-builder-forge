@@ -18,6 +18,71 @@ set -euo pipefail
 FORGE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 # ==============================================================================
+# NON-INTERACTIVE MODE (Phase 5a): flags/env for headless/CI init. Every resolved
+# value still flows through the SAME validate_input/validate_token/escape gates
+# below — a flag/env value NEVER bypasses validation. All enforce-adjacent writes
+# stay internal to this bash process (the deny hook is subprocess-blind); they are
+# never driven through agent Write/Edit tool calls.
+# ==============================================================================
+NONINTERACTIVE="${FORGE_INIT_NONINTERACTIVE:-0}"
+usage() {
+    cat <<'EOF'
+Usage: bash .forge/scripts/init.sh [--non-interactive] [--reinit] [--help]
+
+Interactive by default. In --non-interactive mode (or FORGE_INIT_NONINTERACTIVE=1),
+every value is read from an env var; a required value with no default aborts (exit 2):
+
+  FORGE_INIT_REPO_NAME        (required)  repository name (lowercase, URL-safe)
+  FORGE_INIT_ORG_NAME         (required)  organization display name
+  FORGE_INIT_GITHUB_ORG       (required)  github org or username
+  FORGE_INIT_MAINTAINER       (required)  CODEOWNERS maintainer (user or @team)
+  FORGE_INIT_PLATFORM         (default: claude-code)
+  FORGE_INIT_DEFAULT_BRANCH   (default: main)
+  FORGE_INIT_BEAD_PREFIX      (default: fx)
+  FORGE_INIT_GIT_AUTHOR_NAME  (default: "<repo> harness")
+  FORGE_INIT_GIT_AUTHOR_EMAIL (default: forge-harness@localhost)
+  FORGE_INIT_REVIEWER_BACKEND (default: auto-detected ollama/claude-fresh)
+  FORGE_INIT_TARGET_BRANCH_NS (default: forge/agent)
+  FORGE_INIT_SANDBOX_NETWORK  (default: bridge)  env-only knob — see the note init prints
+  FORGE_INIT_TARGET_CONTAINER (default: 1)        env-only knob — see the note init prints
+  FORGE_INIT_SENTINEL_NS      (default: forge)
+  FORGE_INIT_REINIT=y | --reinit   proceed past the already-initialized guard
+  FORGE_INIT_UPDATE_REMOTE (default: y)  FORGE_INIT_SCAFFOLD (default: y)  FORGE_INIT_RUN_DOCTOR (default: y)
+EOF
+}
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --non-interactive | -y | --yes) NONINTERACTIVE=1 ;;
+        --reinit) FORGE_INIT_REINIT=y ;;
+        -h | --help) usage; exit 0 ;;
+        *) echo "init: unknown argument '$1' (see --help)"; exit 2 ;;
+    esac
+    shift
+done
+
+# ask <VAR> <ENV> <DEFAULT> <PROMPT> — resolve one value: env var in non-interactive mode, read -rp
+# otherwise. A REQUIRED value passes an EMPTY default; a missing required value in non-interactive mode
+# aborts naming the env var. The resolved value is validated by the SAME gates below (never bypassed).
+ask() {
+    local __var="$1" __env="$2" __def="$3" __prompt="$4" __val
+    if [ "$NONINTERACTIVE" = "1" ]; then
+        __val="${!__env-}"; [ -n "$__val" ] || __val="$__def"
+        [ -n "$__val" ] || { echo "ERROR: non-interactive init requires ${__env} (no default for ${__var})."; exit 2; }
+    else
+        read -rp "$__prompt" __val; [ -n "$__val" ] || __val="$__def"
+    fi
+    printf -v "$__var" '%s' "$__val"
+}
+# confirm <ENV> <default y|n> <PROMPT> — a y/N gate; env var in non-interactive mode.
+confirm() {
+    local __env="$1" __def="$2" __prompt="$3" __ans
+    if [ "$NONINTERACTIVE" = "1" ]; then __ans="${!__env:-$__def}"; else read -rp "$__prompt" __ans; __ans="${__ans:-$__def}"; fi
+    case "$__ans" in [Yy]*) return 0 ;; *) return 1 ;; esac
+}
+# ctx — print prompt-context banner lines only in interactive mode.
+ctx() { [ "$NONINTERACTIVE" = "1" ] || printf '%s\n' "$@"; }
+
+# ==============================================================================
 # IDEMPOTENCY: warn if this instance has already been initialized.
 # ==============================================================================
 if [[ -f "${FORGE_ROOT}/.forge/.initialized" ]]; then
@@ -26,8 +91,7 @@ if [[ -f "${FORGE_ROOT}/.forge/.initialized" ]]; then
     echo ""
     cat "${FORGE_ROOT}/.forge/.initialized"
     echo ""
-    read -rp "Re-run init? Placeholders already substituted will not change. Scaffolding steps will re-run. [y/N]: " REINIT
-    if [[ ! "${REINIT}" =~ ^[Yy] ]]; then
+    if ! confirm FORGE_INIT_REINIT "N" "Re-run init? Placeholders already substituted will not change. Scaffolding steps will re-run. [y/N]: "; then
         echo "Aborted."
         exit 0
     fi
@@ -93,40 +157,45 @@ else
 fi
 
 # ---- gather configuration ----------------------------------------------------
-read -rp "Repository name (e.g., acme-forge): " REPO_NAME
-read -rp "Organization name (e.g., Acme Corp): " ORG_NAME
-read -rp "GitHub org or username (e.g., acme-corp): " GITHUB_ORG
-read -rp "GitHub maintainer user or team for CODEOWNERS (e.g., my-team): " MAINTAINER
-read -rp "Primary agent platform [claude-code/codex/custom] (default: claude-code): " PLATFORM
-PLATFORM="${PLATFORM:-claude-code}"
-read -rp "Default branch (default: main): " DEFAULT_BRANCH
-DEFAULT_BRANCH="${DEFAULT_BRANCH:-main}"
-read -rp "Task-ledger ID prefix — short, lowercase (default: fx): " BEAD_PREFIX
-BEAD_PREFIX="${BEAD_PREFIX:-fx}"
-read -rp "Harness git author name for automated commits (default: ${REPO_NAME} harness): " GIT_AUTHOR_NAME
-GIT_AUTHOR_NAME="${GIT_AUTHOR_NAME:-${REPO_NAME} harness}"
-read -rp "Harness git author email (default: forge-harness@localhost): " GIT_AUTHOR_EMAIL
-GIT_AUTHOR_EMAIL="${GIT_AUTHOR_EMAIL:-forge-harness@localhost}"
-echo ""
-echo "Reviewer backend default: ${REVIEWER_DEFAULT} (${REVIEWER_WHY})"
-read -rp "Reviewer backend [ollama/claude-fresh/codex] (default: ${REVIEWER_DEFAULT}): " REVIEWER_BACKEND
-REVIEWER_BACKEND="${REVIEWER_BACKEND:-${REVIEWER_DEFAULT}}"
-echo ""
-echo "Target-repo agent branches are named '<namespace>/builder/<id>-<slug>' (self builds keep"
-echo "'task/<id>-<slug>'). The reconcile close binds to this namespace; the default is fine for almost"
-echo "everyone."
-read -rp "Target-repo branch namespace (default: forge/agent): " FORGE_TARGET_BRANCH_NS
-FORGE_TARGET_BRANCH_NS="${FORGE_TARGET_BRANCH_NS:-forge/agent}"
+ask REPO_NAME        FORGE_INIT_REPO_NAME        ""                        "Repository name (e.g., acme-forge): "
+ask ORG_NAME         FORGE_INIT_ORG_NAME         ""                        "Organization name (e.g., Acme Corp): "
+ask GITHUB_ORG       FORGE_INIT_GITHUB_ORG       ""                        "GitHub org or username (e.g., acme-corp): "
+ask MAINTAINER       FORGE_INIT_MAINTAINER       ""                        "GitHub maintainer user or team for CODEOWNERS (e.g., my-team): "
+ask PLATFORM         FORGE_INIT_PLATFORM         "claude-code"             "Primary agent platform [claude-code/codex/custom] (default: claude-code): "
+ask DEFAULT_BRANCH   FORGE_INIT_DEFAULT_BRANCH   "main"                    "Default branch (default: main): "
+ask BEAD_PREFIX      FORGE_INIT_BEAD_PREFIX      "fx"                      "Task-ledger ID prefix — short, lowercase (default: fx): "
+ask GIT_AUTHOR_NAME  FORGE_INIT_GIT_AUTHOR_NAME  "${REPO_NAME} harness"    "Harness git author name for automated commits (default: ${REPO_NAME} harness): "
+ask GIT_AUTHOR_EMAIL FORGE_INIT_GIT_AUTHOR_EMAIL "forge-harness@localhost" "Harness git author email (default: forge-harness@localhost): "
+ctx "" "Reviewer backend default: ${REVIEWER_DEFAULT} (${REVIEWER_WHY})"
+ask REVIEWER_BACKEND FORGE_INIT_REVIEWER_BACKEND "${REVIEWER_DEFAULT}"     "Reviewer backend [ollama/claude-fresh/codex] (default: ${REVIEWER_DEFAULT}): "
+ctx "" \
+    "Target-repo agent branches are named '<namespace>/builder/<id>-<slug>' (self builds keep" \
+    "'task/<id>-<slug>'). The reconcile close binds to this namespace; the default is fine for almost" \
+    "everyone."
+ask FORGE_TARGET_BRANCH_NS FORGE_INIT_TARGET_BRANCH_NS "forge/agent"       "Target-repo branch namespace (default: forge/agent): "
 case "$FORGE_TARGET_BRANCH_NS" in
   '' | *[!A-Za-z0-9/_-]* | /* | */ | task | task/*)
     echo "ERROR: invalid branch namespace '${FORGE_TARGET_BRANCH_NS}'. Use [A-Za-z0-9/_-], no leading/trailing slash, not 'task'."; exit 2 ;;
 esac
-echo ""
-echo "The harness marks and parses structured blocks with an internal marker"
-echo "namespace (e.g. '<!-- forge:tasks:begin v1 -->'). The default is fine for"
-echo "almost everyone; override only if 'forge:' collides with your tooling."
-read -rp "Marker namespace (default: forge): " SENTINEL_NS
-SENTINEL_NS="${SENTINEL_NS:-forge}"
+ctx "" \
+    "Container topology (Phase 2). Target-repo builds run in a networked isolation container by default." \
+    "These are ENV-ONLY knobs (read at runtime with these defaults); init records your choice and prints" \
+    "how to make a non-default value stick — it does not persist them to a config file."
+ask FORGE_SANDBOX_NETWORK FORGE_INIT_SANDBOX_NETWORK "bridge"              "Container network [bridge/none] (default: bridge = networked; 'none' restores egress-deny): "
+case "$FORGE_SANDBOX_NETWORK" in
+  bridge | none | host) ;;
+  *) echo "ERROR: invalid FORGE_SANDBOX_NETWORK '${FORGE_SANDBOX_NETWORK}'. Use bridge (networked), none (egress-deny), or host."; exit 2 ;;
+esac
+ask FORGE_TARGET_CONTAINER FORGE_INIT_TARGET_CONTAINER "1"                 "Container-default for target builds? [1/0] (default: 1 = on; 0 = host-side): "
+case "$FORGE_TARGET_CONTAINER" in
+  0 | 1) ;;
+  *) echo "ERROR: invalid FORGE_TARGET_CONTAINER '${FORGE_TARGET_CONTAINER}'. Use 1 (container-default) or 0 (host-side)."; exit 2 ;;
+esac
+ctx "" \
+    "The harness marks and parses structured blocks with an internal marker" \
+    "namespace (e.g. '<!-- forge:tasks:begin v1 -->'). The default is fine for" \
+    "almost everyone; override only if 'forge:' collides with your tooling."
+ask SENTINEL_NS      FORGE_INIT_SENTINEL_NS      "forge"                   "Marker namespace (default: forge): "
 INIT_DATE=$(date +%Y-%m-%d)
 
 # normalize
@@ -289,6 +358,19 @@ sed -i "s|^FORGE_TARGET_BRANCH_NS=.*|FORGE_TARGET_BRANCH_NS=\"${FORGE_TARGET_BRA
     "${FORGE_ROOT}/harness/branches.config"
 echo "  FORGE_TARGET_BRANCH_NS -> ${FORGE_TARGET_BRANCH_NS} (target-repo builder branches: ${FORGE_TARGET_BRANCH_NS}/builder/<id>-<slug>; self builds keep task/<id>-<slug>)"
 
+# Container topology knobs (Phase 2) — ENV-ONLY. Runtime reads them with defaults (bridge / on); init does
+# NOT persist them to a config, so a NON-DEFAULT choice must be exported in the shell/CI environment that
+# runs the harness. Guidance only (the defaults need no action).
+echo "Container topology (env-only knobs; defaults need no action):"
+if [ "${FORGE_SANDBOX_NETWORK}" != "bridge" ] || [ "${FORGE_TARGET_CONTAINER}" != "1" ]; then
+    echo "  NON-DEFAULT chosen — export these where the harness runs (shell profile / CI env), e.g.:"
+    [ "${FORGE_SANDBOX_NETWORK}" != "bridge" ] && echo "      export FORGE_SANDBOX_NETWORK=${FORGE_SANDBOX_NETWORK}"
+    [ "${FORGE_TARGET_CONTAINER}" != "1" ]     && echo "      export FORGE_TARGET_CONTAINER=${FORGE_TARGET_CONTAINER}"
+    echo "  (they are read at runtime by harness/sandbox-lib.sh + harness/run-task.sh, not persisted here.)"
+else
+    echo "  FORGE_SANDBOX_NETWORK=bridge (networked), FORGE_TARGET_CONTAINER=1 (container-default) — defaults, no action needed."
+fi
+
 # ==============================================================================
 # 6. MARKER NAMESPACE (optional rename — must stay consistent EVERYWHERE it is
 #    both emitted and parsed: harness scripts, agent/skill docs, templates, tests)
@@ -346,9 +428,7 @@ if [[ -n "$CURRENT_REMOTE" ]] && [[ "$CURRENT_REMOTE" == *"agentic-builder-forge
     echo "Current git remote points to the template repository."
     echo "  Current:   ${CURRENT_REMOTE}"
     echo "  Suggested: ${NEW_REMOTE}"
-    read -rp "Update remote origin? [Y/n]: " UPDATE_REMOTE
-    UPDATE_REMOTE="${UPDATE_REMOTE:-Y}"
-    if [[ "${UPDATE_REMOTE}" =~ ^[Yy] ]]; then
+    if confirm FORGE_INIT_UPDATE_REMOTE "Y" "Update remote origin? [Y/n]: "; then
         git -C "${FORGE_ROOT}" remote set-url origin "${NEW_REMOTE}"
         echo "  Remote updated"
     else
@@ -406,10 +486,7 @@ echo "  docs/forge-template-readme.md  -> template docs (preserved)"
 echo "  docs/onboarding.md             -> starter onboarding guide"
 echo "  CHANGELOG.md                   -> fresh changelog"
 echo ""
-read -rp "Proceed? [Y/n]: " SCAFFOLD
-SCAFFOLD="${SCAFFOLD:-Y}"
-
-if [[ "${SCAFFOLD}" =~ ^[Yy] ]]; then
+if confirm FORGE_INIT_SCAFFOLD "Y" "Proceed? [Y/n]: "; then
     if [[ -f "${FORGE_ROOT}/templates/readme-instance.md" ]]; then
         {
             echo "> This file contains the original template documentation."
@@ -469,6 +546,9 @@ bead_prefix="${BEAD_PREFIX}"
 git_author_name="${GIT_AUTHOR_NAME}"
 git_author_email="${GIT_AUTHOR_EMAIL}"
 reviewer_backend="${REVIEWER_BACKEND}"
+target_branch_ns="${FORGE_TARGET_BRANCH_NS}"
+sandbox_network="${FORGE_SANDBOX_NETWORK}"
+target_container="${FORGE_TARGET_CONTAINER}"
 sentinel_ns="${SENTINEL_NS}"
 init_date="${INIT_DATE}"
 template_version="0.1.0"
@@ -480,9 +560,7 @@ echo "  State saved to .forge/.initialized (gitignored)"
 # POST-INIT CHECK
 # ==============================================================================
 echo ""
-read -rp "Run the post-init check (doctor)? [Y/n]: " RUN_DOCTOR
-RUN_DOCTOR="${RUN_DOCTOR:-Y}"
-if [[ "${RUN_DOCTOR}" =~ ^[Yy] ]]; then
+if confirm FORGE_INIT_RUN_DOCTOR "Y" "Run the post-init check (doctor)? [Y/n]: "; then
     echo ""
     bash "${FORGE_ROOT}/.forge/scripts/doctor.sh" --post-init || {
         echo ""
