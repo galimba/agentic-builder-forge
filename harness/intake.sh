@@ -93,6 +93,18 @@ intake_load_config() {
   . "$cfg"
 }
 
+# P6b: intake profile presets (advisory ergonomics). Sourced ONLY where --profile is consumed
+# (cmd_start), so the other intake commands keep a minimal dependency surface. The gate never reads
+# this — profiles are gate-blind. Fails closed if the shipped presets file is absent. Requires
+# intake_load_config to have run first (INTAKE_PROFILES is defined in intake.config).
+intake_load_profiles() {
+  local pcfg
+  pcfg="$(intake_resolve "${INTAKE_PROFILES:-harness/intake-profiles.config}")"
+  [ -f "$pcfg" ] || die "missing intake profiles config: $pcfg (harness/intake-profiles.config; P6b)"
+  # shellcheck source=/dev/null
+  . "$pcfg"
+}
+
 # Same root-discipline as run-task.sh: Claude loads .claude/ hooks from the launch cwd only
 # (claude-code#12962); a session launched outside the root runs UNPROTECTED.
 require_root() {
@@ -145,12 +157,13 @@ _intake_set_field() {
 
 # Fill the four Header fields, then assert no PLACEHOLDER / empty value survives (fail closed).
 intake_fill_header() {
-  local spec="$1" objective="$2" target="$3" mode="$4" status="$5" f
+  local spec="$1" objective="$2" target="$3" mode="$4" status="$5" profile="$6" f
   _intake_set_field "$spec" "Objective" "$objective"
   _intake_set_field "$spec" "Target Repo(s)" "$target"
   _intake_set_field "$spec" "Mode" "$mode"
   _intake_set_field "$spec" "Status" "$status"
-  for f in "Objective" "Target Repo(s)" "Mode" "Status"; do
+  _intake_set_field "$spec" "Profile" "$profile"   # P6b
+  for f in "Objective" "Target Repo(s)" "Mode" "Status" "Profile"; do
     if grep -F -- "- **$f:**" "$spec" | grep -qE '\[PLACEHOLDER|:\*\*[[:space:]]*$'; then
       die "header fill left an empty/placeholder field: $f (in $spec)"
     fi
@@ -160,12 +173,14 @@ intake_fill_header() {
 
 cmd_start() {
   intake_load_config
-  local objective="" target="" mode="${INTAKE_MODE_DEFAULT:-interactive}"
-  local usage='usage: intake.sh start "<objective>" --target <repo[,repo...]> [--mode interactive|autonomous]'
+  intake_load_profiles   # P6b: presets for --profile (advisory; gate-blind)
+  local objective="" target="" mode="${INTAKE_MODE_DEFAULT:-interactive}" profile="${INTAKE_PROFILE_DEFAULT:-code}"
+  local usage='usage: intake.sh start "<objective>" --target <repo[,repo...]> [--mode interactive|autonomous] [--profile code|docs|config]'
   while [ $# -gt 0 ]; do
     case "$1" in
       --target) target="${2:-}"; shift 2 || die "$usage" ;;
       --mode) mode="${2:-}"; shift 2 || die "$usage" ;;
+      --profile) profile="${2:-}"; shift 2 || die "$usage" ;;
       --*) die "unknown flag: $1 ($usage)" ;;
       *)
         if [ -z "$objective" ]; then
@@ -189,6 +204,18 @@ cmd_start() {
     interactive | autonomous) : ;;
     *) die "mode must be interactive or autonomous (got: $mode)" ;;
   esac
+  # P6b: validate --profile against the shipped presets (INTAKE_PROFILES_LIST). Advisory ergonomics —
+  # the acceptance gate is PROFILE-BLIND. EXACT per-token match (not a substring `case " $list " in
+  # *" $p "*`, which would admit a multi-word "code docs"): profile must equal one list entry, so the
+  # prefix eval below (the targets.config idiom) reads a well-formed var name it cannot be steered into.
+  local _pmatch=0 _p
+  for _p in ${INTAKE_PROFILES_LIST:-code docs config}; do
+    [ "$_p" = "$profile" ] && { _pmatch=1; break; }
+  done
+  [ "$_pmatch" = 1 ] || die "unknown profile: '$profile' (choose one of: ${INTAKE_PROFILES_LIST:-code docs config})"
+  local prof_ev prof_desc
+  eval "prof_ev=\"\${${profile}_PROFILE_EVIDENCE_DEFAULT:-}\""
+  eval "prof_desc=\"\${${profile}_PROFILE_DESCRIPTION:-}\""
   # T7: autonomous/unattended has no human to heed require_root's warning — an off-root launch means
   # Claude's .claude/ deny hooks never loaded (claude-code#12962) and the whole protection floor is absent.
   # Treat off-root as a HARD refusal in autonomous mode, regardless of the ambient FORGE_REQUIRE_ROOT.
@@ -230,7 +257,7 @@ cmd_start() {
   # tool calls); $dir is freshly built under specs/ from a sanitized slug (no glob/.. metacharacters).
   trap 'rc=$?; [ "$rc" = 0 ] || rm -rf "$dir"' EXIT
   cp "$template_file" "$spec" || die "cannot scaffold $spec"
-  intake_fill_header "$spec" "$objective" "$target" "$mode" "draft"
+  intake_fill_header "$spec" "$objective" "$target" "$mode" "draft" "$profile"
 
   # Arm the intake sentinel (phase=open). It carries the spec path, mode, and the clarify/restate budgets,
   # so the Stop gate (stop-gate-intake.sh) and the canary-gated clarify-gate read ONE source of truth.
@@ -240,10 +267,10 @@ cmd_start() {
   mkdir -p "$hd" || die "cannot create harness dir: $hd"
   stmp="$(mktemp)"
   jq -nc \
-    --arg spec "$spec" --arg slug "$slug" --arg obj "$objective" --arg tgt "$target" --arg m "$mode" \
+    --arg spec "$spec" --arg slug "$slug" --arg obj "$objective" --arg tgt "$target" --arg m "$mode" --arg prof "$profile" \
     --argjson cr "${INTAKE_CLARIFY_ROUNDS:-5}" --argjson rr "${INTAKE_RESTATE_ROUNDS:-3}" --argjson mq "${INTAKE_CLARIFY_MAX_Q:-4}" \
     --arg ts "$(date -u +%FT%TZ)" \
-    '{spec:$spec,slug:$slug,objective:$obj,targets:$tgt,mode:$m,phase:"open",clarify_rounds:$cr,restate_rounds:$rr,clarify_max_q:$mq,started:$ts}' \
+    '{spec:$spec,slug:$slug,objective:$obj,targets:$tgt,mode:$m,profile:$prof,phase:"open",clarify_rounds:$cr,restate_rounds:$rr,clarify_max_q:$mq,started:$ts}' \
     >"$stmp" && mv "$stmp" "$sentinel" || die "cannot write intake sentinel: $sentinel"
 
   cat <<EOF
@@ -252,6 +279,7 @@ cmd_start() {
   spec:     $spec
   target:   $target
   mode:     $mode
+  profile:  $profile   (evidence default: ${prof_ev:-?} — ${prof_desc:-advisory})
   status:   draft   (intake sentinel ARMED, phase=open — the clarify + Gate-A floors are now live)
 
   Next — prime the Architect (interactive primary session):

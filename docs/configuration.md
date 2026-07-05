@@ -73,7 +73,22 @@ documented in the file itself.
 
 `INTAKE_CLARIFY_ROUNDS` (default 5), `INTAKE_RESTATE_ROUNDS` (default 3),
 `INTAKE_CLARIFY_MAX_Q` (default 4). Budgets bound agent-initiated QUESTIONS, never spec
-coverage — overflow becomes flagged `[ASSUMED …]` entries. All env-overridable.
+coverage — overflow becomes flagged `[ASSUMED …]` entries. All env-overridable. Also
+points intake at the profile presets: `INTAKE_PROFILES` (default
+`harness/intake-profiles.config`) and `INTAKE_PROFILE_DEFAULT` (default `code`).
+
+### `harness/intake-profiles.config` — intake profiles (P6b)
+
+Presets for `intake.sh start --profile code|docs|config` (default `code`). A profile
+shapes intake **ergonomics only**: it is **advisory** — recorded in the spec **Header**
+and the intake sentinel, and surfaced as a hint at scaffold time — so nothing mechanical
+keys on it. The acceptance gate is **profile-blind** (it never reads this file), as is the
+catastrophic-category floor (`cmd_ratify` G3). `--profile` is validated against
+`INTAKE_PROFILES_LIST` (fail-closed on an unknown name). Each profile carries exactly two
+fields, resolved by prefix (the `targets.config` idiom): `<name>_PROFILE_DESCRIPTION` (the
+one-line summary shown at `start`) and `<name>_PROFILE_EVIDENCE_DEFAULT` — the evidence
+shape the architect defaults to (`dod_tests` for `code`, a non-test `sc_evidence` `assert`
+for `docs`/`config`, per P6a).
 
 ### `harness/board.config` — optional oversight board (gitignored)
 

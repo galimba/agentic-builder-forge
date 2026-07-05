@@ -50,6 +50,10 @@ Set `FORGE_SANDBOX_NETWORK=none` to restore container-level egress-deny. The kno
 | `FORGE_INTAKE_BLOCK_CAP` | `8` | Consecutive intake Stop-blocks before release. |
 | `INTAKE_RATIFY_MAX_AGE` | `86400` (s) | Max age of a ratify token before `convert` refuses it as stale. |
 
+`intake.sh start --profile code|docs|config` (default `code`) records an **advisory** profile in the
+spec Header and the intake sentinel, surfaced as a scaffold-time hint; the acceptance gate is
+**profile-blind** and never reads it.
+
 ### Review
 
 | Variable | Default | Effect |

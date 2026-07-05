@@ -26,6 +26,7 @@ ids are stable once assigned — never renumber; mark withdrawn items `~~FR-007~
 - **Objective:** [PLACEHOLDER — one or two sentences: the outcome wanted, in the user's words.]
 - **Target Repo(s):** [PLACEHOLDER — repo slug(s), e.g. `example-target`. Must match `target_repos` in the Task Breakdown.]
 - **Mode:** [`interactive` | `autonomous`]
+- **Profile:** [`code` | `docs` | `config` — set by `intake.sh start --profile`; **advisory**: the evidence shape this build defaults to (a non-test `sc_evidence` assert for `docs`/`config`, a runnable `dod_tests` for `code`; P6a/P6b). The acceptance gate is profile-blind.]
 - **Status:** [`draft` | `clarifying` | `ready-for-tasks` | `approved`]
 
 ---
