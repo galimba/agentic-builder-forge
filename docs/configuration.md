@@ -95,6 +95,25 @@ for `docs`/`config`, per P6a).
 Emitted by `./harness/board-bootstrap.sh ensure` (requires `BOARD_OWNER`). Never edit
 by hand; re-run ensure.
 
+### `harness/vault.config` — optional read-only Vault (P7) (gitignored)
+
+An optional sibling knowledge repo (human-curated context/memory), **read-only** to the
+whole Forge. Copy the committed `harness/vault.config.example` to `harness/vault.config`
+(gitignored instance data) and add `<name>=/absolute/path` lines — one named vault per line,
+**ABSOLUTE** paths only (a relative / `..`-bearing / non-directory entry is skipped). Absent
+config means NO vault: the loop runs unchanged.
+
+The resolver is `harness/vault.sh {paths|doctor}`: `paths` prints each configured vault's
+absolute, existing directory (one per line) so an agent can Read the content with its **own**
+tools; `doctor` prints a `configured N; present M` (or `none (optional)`) summary. It reads
+`vault.config` only — never vault **content**, never writes, never returns a verdict.
+
+**Hard guarantee — the Vault is advisory and gate-blind.** It NEVER drives acceptance (the
+accept-gate is vault-blind, exactly as it is profile-blind), bead state (`bd` is
+authoritative), branch state (git/harness authoritative), security policy (the floor is
+self-contained — a vault cannot relax a deny rule), or merge authority (humans merge). No
+gate, reconcile, branch, or floor path invokes `vault.sh`.
+
 ## Runtime knobs (environment)
 
 | Variable | Effect |

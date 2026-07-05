@@ -12,6 +12,9 @@ harness/board.config
 # Target repo map: the real file holds operator-absolute clone paths (instance data); .example is committed
 harness/repos.config
 
+# Optional read-only Vault map (P7): the real file holds operator-absolute paths (instance data); .example is committed
+harness/vault.config
+
 # Beads / Dolt files (added by bd init)
 .dolt/
 *.db

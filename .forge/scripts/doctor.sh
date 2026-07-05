@@ -84,6 +84,12 @@ for _bin in docker devcontainer; do
     else warn "${_bin} not found — needed only for container builds (FORGE_SANDBOX=1 / container-default targets); SKIP"
     fi
 done
+# optional read-only Vault (P7): INFO only — the vault is optional AND gate-blind, so it never FAILs/WARNs.
+if [[ -x "${FORGE_ROOT}/harness/vault.sh" ]]; then
+    info "$("${FORGE_ROOT}/harness/vault.sh" doctor 2>/dev/null || printf 'vault: none (optional)')"
+else
+    info "vault: none (optional — harness/vault.sh + harness/vault.config not present)"
+fi
 
 # ---- 2. residual placeholders -------------------------------------------------
 # Tracked markdown + .github files must carry NO unfilled {{TOKENS}} after init.
