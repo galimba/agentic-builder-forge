@@ -16,9 +16,25 @@ else is mechanism.
 | Ledger prefix | `BD_PREFIX` in `harness/beads.config` + `bd init -p` | task IDs: `<prefix>-xxxx` |
 | Harness git author | `harness/sandbox-lib.sh` | automated commits say "the harness made this" — substituted, not read from git config (the sandbox runs `env -i`) |
 | Reviewer backend | `REVIEWER_BACKEND` default in `harness/reviewers.config` | detected: prefers claude-fresh in a Claude Code environment, else ollama |
+| Target-repo branch namespace | `FORGE_TARGET_BRANCH_NS` in `harness/branches.config` | target-repo builder branches `<ns>/builder/<id>-<slug>`; default `forge/agent`; trusted by the reconcile close |
+| Container network | `FORGE_SANDBOX_NETWORK` (**env-only knob**) | default `bridge` (networked); `none` restores egress-deny. Init prompts + records the choice but does not persist it — export a non-default value in the shell/CI env |
+| Container-default for targets | `FORGE_TARGET_CONTAINER` (**env-only knob**) | default `1` (container-default target builds); `0` = host-side. Same env-only handling as above |
 | Marker namespace | `forge:` -> `<yours>:` everywhere it is emitted AND parsed | default fine; init renames atomically and verifies count parity |
 
 Init state is recorded in `.forge/.initialized` (gitignored). Re-running init is guarded.
+
+### Non-interactive init (headless / CI)
+
+`init.sh` is interactive by default. Pass `--non-interactive` (or set `FORGE_INIT_NONINTERACTIVE=1`) to run
+headless: every value is read from a `FORGE_INIT_<NAME>` env var, and a **required** value with no default
+aborts with `exit 2` naming the missing var. Every flag/env value flows through the **same**
+`validate_input` / `validate_token` / escape gates as an interactive answer — a flag never bypasses
+validation (`init.sh` is an injection-sensitive surface). See `bash .forge/scripts/init.sh --help` for the
+full env-var list. Required: `FORGE_INIT_REPO_NAME`, `FORGE_INIT_ORG_NAME`, `FORGE_INIT_GITHUB_ORG`,
+`FORGE_INIT_MAINTAINER`; the rest default (platform `claude-code`, branch `main`, prefix `fx`, namespace
+`forge/agent`, network `bridge`, container `1`, marker `forge`). The y/N gates default yes
+(`FORGE_INIT_UPDATE_REMOTE` / `_SCAFFOLD` / `_RUN_DOCTOR`); `--reinit` (or `FORGE_INIT_REINIT=y`) proceeds
+past the already-initialized guard.
 
 ## Config files (edit any time)
 
