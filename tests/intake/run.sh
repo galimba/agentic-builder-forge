@@ -169,6 +169,7 @@ SPEC="$S1/001-let-reviewers-leave-comments/spec.md"
 grep -qxF -- "- **Objective:** Let reviewers leave comments" "$SPEC" && ok || no "Header Objective filled"
 grep -qxF -- "- **Target Repo(s):** agentic-builder-forge" "$SPEC" && ok || no "Header Target filled"
 grep -qxF -- "- **Mode:** interactive" "$SPEC" && ok || no "Header Mode filled"
+grep -qxF -- "- **Profile:** code" "$SPEC" && ok || no "Header Profile default = code (P6b)"
 grep -qxF -- "- **Status:** draft" "$SPEC" && ok || no "Header Status = draft"
 grep -qF "<!-- forge:tasks:begin v1 -->" "$SPEC" && ok || no "Task Breakdown sentinel carried through"
 if awk '/^## Header/{h=1;next} /^---/{if(h)exit} h' "$SPEC" | grep -q '\[PLACEHOLDER'; then no "Header still has a PLACEHOLDER"; else ok; fi
@@ -177,6 +178,58 @@ echo "== intake start: mode default + numbering =="
 run_intake "$S1" start "Export submissions as CSV" --target agentic-builder-forge
 [ -f "$S1/002-export-submissions-as-csv/spec.md" ] && ok || no "second objective -> 002"
 grep -qxF -- "- **Mode:** interactive" "$S1/002-export-submissions-as-csv/spec.md" && ok || no "mode default = interactive"
+
+echo "== intake start: --profile records the profile in Header + sentinel; unknown fails closed (P6b) =="
+PROF_HD="$(mktemp -d -p "$TMPROOT")"
+PROF_SPECS="$TMPROOT/prof_specs"
+INTAKE_SPECS_DIR="$PROF_SPECS" INTAKE_TEMPLATE="$TEMPLATE" FORGE_HARNESS_DIR="$PROF_HD" \
+  bash "$INTAKE" start "Write the onboarding guide" --target agentic-builder-forge --profile docs >/dev/null 2>&1 && ok || no "start --profile docs exits 0"
+PSPEC="$PROF_SPECS/001-write-the-onboarding-guide/spec.md"
+grep -qxF -- "- **Profile:** docs" "$PSPEC" && ok || no "Header Profile = docs (P6b)"
+[ "$(jq -r .profile "$PROF_HD/active-intake.json" 2>/dev/null)" = "docs" ] && ok || no "sentinel records profile=docs (P6b)"
+# no PLACEHOLDER survives in the Header after a docs-profile scaffold
+if awk '/^## Header/{h=1;next} /^---/{if(h)exit} h' "$PSPEC" | grep -q '\[PLACEHOLDER'; then no "docs-profile Header still has a PLACEHOLDER"; else ok; fi
+# default (no --profile) records code in the sentinel
+DEF_HD="$(mktemp -d -p "$TMPROOT")"
+INTAKE_SPECS_DIR="$TMPROOT/def_specs" INTAKE_TEMPLATE="$TEMPLATE" FORGE_HARNESS_DIR="$DEF_HD" \
+  bash "$INTAKE" start "Default profile objective" --target agentic-builder-forge >/dev/null 2>&1
+[ "$(jq -r .profile "$DEF_HD/active-intake.json" 2>/dev/null)" = "code" ] && ok || no "sentinel default profile=code (P6b)"
+# config profile also legal
+CFG_HD="$(mktemp -d -p "$TMPROOT")"
+INTAKE_SPECS_DIR="$TMPROOT/cfg_specs" INTAKE_TEMPLATE="$TEMPLATE" FORGE_HARNESS_DIR="$CFG_HD" \
+  bash "$INTAKE" start "Tune the retry config" --target agentic-builder-forge --profile config >/dev/null 2>&1 && ok || no "start --profile config exits 0"
+[ "$(jq -r .profile "$CFG_HD/active-intake.json" 2>/dev/null)" = "config" ] && ok || no "sentinel records profile=config (P6b)"
+# unknown profile -> fail closed, offender named
+UP_HD="$(mktemp -d -p "$TMPROOT")"
+up_err="$(INTAKE_SPECS_DIR="$TMPROOT/up_specs" INTAKE_TEMPLATE="$TEMPLATE" FORGE_HARNESS_DIR="$UP_HD" bash "$INTAKE" start "Bad profile objective" --target agentic-builder-forge --profile wat 2>&1 >/dev/null)"
+up_rc=$?
+{ [ "$up_rc" != 0 ] && printf '%s' "$up_err" | grep -qF "unknown profile: 'wat'"; } && ok || no "unknown --profile fails closed + named (rc=$up_rc; got: $up_err)"
+# and it minted NO spec dir (fail closed before scaffold)
+[ ! -d "$TMPROOT/up_specs" ] || [ -z "$(ls -A "$TMPROOT/up_specs" 2>/dev/null)" ] && ok || no "unknown --profile scaffolds nothing"
+# exact-match validation (not substring): a multi-word / partial / case-variant value must be rejected
+for badp in "code docs" "cod" "CODE" "config "; do
+  MW_HD="$(mktemp -d -p "$TMPROOT")"
+  if INTAKE_SPECS_DIR="$(mktemp -d -p "$TMPROOT")" INTAKE_TEMPLATE="$TEMPLATE" FORGE_HARNESS_DIR="$MW_HD" \
+       bash "$INTAKE" start "Sub profile objective" --target agentic-builder-forge --profile "$badp" >/dev/null 2>&1; then
+    no "profile '$badp' must be rejected (exact per-token match, not substring)"
+  else ok; fi
+done
+# empty --profile value -> fail closed; --profile as the final arg (no value) -> usage die
+if INTAKE_SPECS_DIR="$(mktemp -d -p "$TMPROOT")" INTAKE_TEMPLATE="$TEMPLATE" FORGE_HARNESS_DIR="$(mktemp -d -p "$TMPROOT")" \
+     bash "$INTAKE" start "Empty profile objective" --target agentic-builder-forge --profile "" >/dev/null 2>&1; then no "--profile '' must fail closed"; else ok; fi
+if INTAKE_SPECS_DIR="$(mktemp -d -p "$TMPROOT")" INTAKE_TEMPLATE="$TEMPLATE" FORGE_HARNESS_DIR="$(mktemp -d -p "$TMPROOT")" \
+     bash "$INTAKE" start "Dangling profile objective" --target agentic-builder-forge --profile >/dev/null 2>&1; then no "--profile with no value must fail"; else ok; fi
+# fail-closed: absent presets file -> start dies naming it, scaffolds nothing
+NP_HD="$(mktemp -d -p "$TMPROOT")"
+np_err="$(INTAKE_SPECS_DIR="$TMPROOT/np_specs" INTAKE_TEMPLATE="$TEMPLATE" INTAKE_PROFILES="$TMPROOT/does-not-exist.config" FORGE_HARNESS_DIR="$NP_HD" bash "$INTAKE" start "No presets objective" --target agentic-builder-forge 2>&1 >/dev/null)"
+np_rc=$?
+{ [ "$np_rc" != 0 ] && printf '%s' "$np_err" | grep -qF "missing intake profiles config"; } && ok || no "absent profiles config -> start dies naming it (rc=$np_rc; got: $np_err)"
+{ [ ! -d "$TMPROOT/np_specs" ] || [ -z "$(ls -A "$TMPROOT/np_specs" 2>/dev/null)" ]; } && ok || no "absent profiles config scaffolds nothing"
+# the scaffold hint surfaces the profile + its evidence default (docs -> assert), pinning list<->preset consistency
+HINT_HD="$(mktemp -d -p "$TMPROOT")"
+hint_out="$(INTAKE_SPECS_DIR="$TMPROOT/hint_specs" INTAKE_TEMPLATE="$TEMPLATE" FORGE_HARNESS_DIR="$HINT_HD" bash "$INTAKE" start "Hinted docs objective" --target agentic-builder-forge --profile docs 2>&1)"
+printf '%s' "$hint_out" | grep -qF "profile:  docs" && ok || no "start hint names the profile (got: $hint_out)"
+printf '%s' "$hint_out" | grep -q "assert" && ok || no "docs-profile hint surfaces evidence default 'assert' (got: $hint_out)"
 
 echo "== intake start: idempotent / fail-closed =="
 if run_intake "$S1" start "Let reviewers leave comments" --target agentic-builder-forge; then no "re-run same slug should fail-closed"; else ok; fi

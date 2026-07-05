@@ -70,14 +70,16 @@ $EDITOR harness/targets.config   # test/lint/format commands per target type
 ## 5. Run the loop
 
 ```bash
-./harness/intake.sh start "My first objective" --target <your-target>   # the name you registered in step 4; then: clarify, spec-review, ratify, (agent authors the breakdown), ratify-breakdown, analyze, convert
+./harness/intake.sh start "My first objective" --target <your-target> [--profile code|docs|config]   # --profile defaults to code; then: clarify, spec-review, ratify, (agent authors the breakdown), ratify-breakdown, analyze, convert
 ./harness/run-task.sh ready                          # see what the decompose minted
 ./harness/run-task.sh start <id>                     # build in an isolated worktree
 ./harness/run-task.sh finish                         # green-gated PR
 ```
 
 `--target` must name a repo you registered in `harness/repos.config` (step 4) — intake fail-closes
-on an unknown name. Study `specs/001-example/` — a complete worked spec packet (its `example-target`
+on an unknown name. `--profile` is advisory (recorded in the spec header, surfaced as a scaffold hint):
+`docs`/`config` objectives can default their success criteria to non-test `sc_evidence` asserts (P6a),
+while the acceptance gate stays profile-blind. Study `specs/001-example/` — a complete worked spec packet (its `example-target`
 is illustrative; register your own before running) — before your first real intake. Then read
 [operating.md](operating.md) and [limitations.md](limitations.md).
 
