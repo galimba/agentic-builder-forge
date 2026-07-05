@@ -28,6 +28,7 @@
     "test:witness": "bash tests/witness/run.sh",
     "test:reaper": "bash tests/reaper/run.sh",
     "test:doctor-preflight": "bash tests/doctor-preflight/run.sh",
+    "test:demo": "bash tests/demo/run.sh",
     "test:escape-classes": "bash tests/escape-classes/run.sh",
     "test:commitguard": "bash tests/commitguard/run.sh",
     "test:iso-guard": "bash tests/boundary/guard-selftest.sh",

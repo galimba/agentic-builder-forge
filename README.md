@@ -41,9 +41,14 @@ bash .forge/scripts/doctor.sh --post-init
 # 4. Prove the gate is green (discovers and runs every test suite)
 bash tests/run-all.sh
 
-# 5. Author your first spec through intake (the canonical path), then build it.
-#    Intake turns an objective into a human-ratified spec and the architect agent
-#    decomposes it into beads — the acceptance-gated unit of work.
+# 5. Watch the whole governed loop run end-to-end — offline, in seconds — against a
+#    THROWAWAY target the demo synthesizes and deletes. Nothing touches your tree or ledger:
+#    architect-shaped bead → start (worktree + branch in the target) → the agent's product
+#    write → finish (target test + the no-LLM acceptance gate + a pristine commit).
+bash .forge/scripts/demo.sh
+
+# 6. Now do it for real. First register your target, then author its spec through intake.
+$EDITOR harness/repos.config                 # <your-target>=/absolute/path/to/local/clone
 ./harness/intake.sh start "add a greet(name) function returning 'Hello, <name>!'" --target <your-target>
 #    ... clarify → spec-review → ratify (you, at a TTY) → decompose → ratify-breakdown → analyze → convert
 #    ... study specs/001-example/ (a complete worked packet) before your first real intake
