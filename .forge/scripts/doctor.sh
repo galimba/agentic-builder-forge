@@ -67,7 +67,7 @@ done
 # JS toolchain + the always-needed basics: WARN (never fail — the lifecycle degrades, it does not vanish).
 have git  || warn "git not found — the harness cannot operate without it"
 have jq   || warn "jq not found — the deny hook + harness scripts fail closed without it"
-have node || warn "node not found — the default 'typescript' target + the harness test suites need Node.js >= 18.18"
+have node || warn "node not found — the default 'typescript' target + the harness test suites need Node.js >= 20.19"
 have pnpm || warn "pnpm not found — the default 'typescript' target uses pnpm"
 # the SELECTED reviewer backend's CLI: WARN if absent (first review run is the earliest failure point).
 _rb="$(sed -n 's/^REVIEWER_BACKEND="\${REVIEWER_BACKEND:-\([a-z-]*\)}".*/\1/p' "${FORGE_ROOT}/harness/reviewers.config" 2>/dev/null | head -1)"
