@@ -35,7 +35,7 @@ claim to be").
 > not egress control**: the shipped manifest is networked (`FORGE_SANDBOX_NETWORK=bridge`; set
 > `FORGE_SANDBOX_NETWORK=none` to restore container-level egress-deny), so a networked container does
 > **not** prevent credential misuse, exfiltration, GitHub-authority misuse, or target-repo mutation.
-> What it *does* enforce is unchanged — read-only mounts of the enforcement files (EROFS), dropped caps,
+> What it _does_ enforce is unchanged — read-only mounts of the enforcement files (EROFS), dropped caps,
 > an unprivileged user. The deny floor is a **guardrail / tripwire** throughout — never complete
 > confinement — and the human merge is the release boundary in every configuration.
 
@@ -47,22 +47,22 @@ Deterministic controls that fire regardless of the model's judgment and fail clo
 unparseable, or partially-loaded hook denies; it does not wave work through). These hold **when the
 hook is loaded** — see the off-root limit in §4.
 
-| Guarantee | Mechanism |
-| --- | --- |
-| The deny decision survives `--dangerously-skip-permissions` | `forge_deny` emits `permissionDecision:"deny"`; a broken `lib.sh` or missing `jq` → deny + exit 2. |
-| Enforcement files can't be edited by the agent | `.claude/hooks/**`, `harness/**`, `.harness/**`, settings — denied (door: `FORGE_ALLOW_HOOK_EDIT=1`, logged). `.git/` and `.beads/` — denied with **no door**. |
-| Writes are confined during a task | To `sandbox/` (self build) or the resolved `work_root` (target build); `..` and relative paths fail closed. |
-| Intake writes are confined | To `specs/**`; `.claude/agents\|skills\|commands` self-rewrite denied. |
-| No push/commit to `main`/`master` | Live-branch reads (not string guesses) in the deny hook **and** an all-actors git pre-commit guard (every vector). |
-| No force/mirror/bare push, no `+refspec` to main | Argv-aware push walker with value-flag routing. |
-| `--no-verify` / `core.hooksPath` / `HUSKY=0` denied | Textual, over-broad by design. |
-| Git-as-mutator can't overwrite floor files | 12 modeled verbs; `git apply`/`am` bounded by git-decoded numstat at forced `-p0` (structural, not a blacklist). |
-| Agent can't close beads directly | `bd close/done/import/supersede/duplicate`, `update --status closed`, `bd todo done` denied (door: `FORGE_ALLOW_BD_CLOSE=1`, logged). |
-| Secret-shaped literals denied | Regex for `sk-…`, `gh[opsur]_…`, `github_pat_…`, `AKIA…`, `xox…`, PEM keys (JWT warns only). |
-| Human ratify gates are TTY-gated; the tokens are non-forgeable | `ratify`/`ratify-breakdown` require a TTY; tokens live under agent-unwritable `.harness/` and are hash-bound + re-verified at `convert`. (Spoofing the *attendance signal* itself with a PTY is a separate residual class — see §2.) |
-| Privileged ops prove the floor is loaded | `finish` and `convert` verify the session witness against a live floor-hash recompute. |
-| The acceptance gate is judgment-free | `accept-gate.sh`: diff ⊆ scope, DoD tests pass, evidence present — pure bash/git/jq, no LLM. |
-| The reviewer can't gate or merge | Tool ceiling is `Read`/`Grep`/`Glob`; the harness talks to GitHub; findings are advisory PR comments. |
+| Guarantee                                                      | Mechanism                                                                                                                                                                                                                            |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| The deny decision survives `--dangerously-skip-permissions`    | `forge_deny` emits `permissionDecision:"deny"`; a broken `lib.sh` or missing `jq` → deny + exit 2.                                                                                                                                   |
+| Enforcement files can't be edited by the agent                 | `.claude/hooks/**`, `harness/**`, `.harness/**`, settings — denied (door: `FORGE_ALLOW_HOOK_EDIT=1`, logged). `.git/` and `.beads/` — denied with **no door**.                                                                       |
+| Writes are confined during a task                              | To `sandbox/` (self build) or the resolved `work_root` (target build); `..` and relative paths fail closed.                                                                                                                          |
+| Intake writes are confined                                     | To `specs/**`; `.claude/agents\|skills\|commands` self-rewrite denied.                                                                                                                                                               |
+| No push/commit to `main`/`master`                              | Live-branch reads (not string guesses) in the deny hook **and** an all-actors git pre-commit guard (every vector).                                                                                                                   |
+| No force/mirror/bare push, no `+refspec` to main               | Argv-aware push walker with value-flag routing.                                                                                                                                                                                      |
+| `--no-verify` / `core.hooksPath` / `HUSKY=0` denied            | Textual, over-broad by design.                                                                                                                                                                                                       |
+| Git-as-mutator can't overwrite floor files                     | 12 modeled verbs; `git apply`/`am` bounded by git-decoded numstat at forced `-p0` (structural, not a blacklist).                                                                                                                     |
+| Agent can't close beads directly                               | `bd close/done/import/supersede/duplicate`, `update --status closed`, `bd todo done` denied (door: `FORGE_ALLOW_BD_CLOSE=1`, logged).                                                                                                |
+| Secret-shaped literals denied                                  | Regex for `sk-…`, `gh[opsur]_…`, `github_pat_…`, `AKIA…`, `xox…`, PEM keys (JWT warns only).                                                                                                                                         |
+| Human ratify gates are TTY-gated; the tokens are non-forgeable | `ratify`/`ratify-breakdown` require a TTY; tokens live under agent-unwritable `.harness/` and are hash-bound + re-verified at `convert`. (Spoofing the _attendance signal_ itself with a PTY is a separate residual class — see §2.) |
+| Privileged ops prove the floor is loaded                       | `finish` and `convert` verify the session witness against a live floor-hash recompute.                                                                                                                                               |
+| The acceptance gate is judgment-free                           | `accept-gate.sh`: diff ⊆ scope, DoD tests pass, evidence present — pure bash/git/jq, no LLM.                                                                                                                                         |
+| The reviewer can't gate or merge                               | Tool ceiling is `Read`/`Grep`/`Glob`; the harness talks to GitHub; findings are advisory PR comments.                                                                                                                                |
 
 ## 2. What is best-effort (and the backstop)
 
@@ -72,16 +72,16 @@ inside subprocesses**. Its design rule: classify write targets identifiable from
 program-internal writes to the OS container; fail closed on anything entirely program-internal. The
 known escape shapes, from the code's own comments:
 
-| Surface | Escape shapes it concedes | Backstop |
-| --- | --- | --- |
-| Env-prefix launch (`PATH=`/`LD_*`/`BASH_ENV`) | here-string `<<<`, process substitution, command-substitution that launches, function/case/coproc bodies, a separator inside a quoted value (`${x:-a;b}`), ANSI-C `$'…'`, `flock -c`, `awk system()`, backslash-newline, renamed/glob entrypoint | OS container + human merge |
-| Interpreter `-c`/`-e` bodies | `php -r`, `lua -e`, other un-enumerated interpreters; `bash -cx` (c-not-terminal) | OS container |
-| Exotic / unrecognized writers | `python -c`, custom binaries, toybox/busybox multicall; recognized writers (perl/ruby `-i`, `sed -i`, editors, tar, cpio, patch) fail closed | OS container |
-| Program-internal writes to floor paths | `awk 'BEGIN{print > "…"}'`, `sed -n 'w …'`, symlink indirection | OS container |
-| Broad-revert git | whole-tree `git pull`/`merge`/`rebase`/`reset --hard <ref>` with no floor pathspec are allowed | **witness floor-drift detection** + OS container |
-| bd done-edge laundering | `bash sandbox/x.sh` containing `bd close`, `env -i` survival, embedded-quoted verb, GNU `parallel` | OS container + human triage |
-| Path-qualified `sudo` (`/usr/bin/sudo`) | evades the word-match | platform safety hook + container |
-| The acceptance gate's own interpreter | a sandbox-shimmed `bash` could interpret the gate and forge a PASS | it's a *quality* gate, not a boundary; launch-time trust is the container + human merge |
+| Surface                                       | Escape shapes it concedes                                                                                                                                                                                                                        | Backstop                                                                                |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| Env-prefix launch (`PATH=`/`LD_*`/`BASH_ENV`) | here-string `<<<`, process substitution, command-substitution that launches, function/case/coproc bodies, a separator inside a quoted value (`${x:-a;b}`), ANSI-C `$'…'`, `flock -c`, `awk system()`, backslash-newline, renamed/glob entrypoint | OS container + human merge                                                              |
+| Interpreter `-c`/`-e` bodies                  | `php -r`, `lua -e`, other un-enumerated interpreters; `bash -cx` (c-not-terminal)                                                                                                                                                                | OS container                                                                            |
+| Exotic / unrecognized writers                 | `python -c`, custom binaries, toybox/busybox multicall; recognized writers (perl/ruby `-i`, `sed -i`, editors, tar, cpio, patch) fail closed                                                                                                     | OS container                                                                            |
+| Program-internal writes to floor paths        | `awk 'BEGIN{print > "…"}'`, `sed -n 'w …'`, symlink indirection                                                                                                                                                                                  | OS container                                                                            |
+| Broad-revert git                              | whole-tree `git pull`/`merge`/`rebase`/`reset --hard <ref>` with no floor pathspec are allowed                                                                                                                                                   | **witness floor-drift detection** + OS container                                        |
+| bd done-edge laundering                       | `bash sandbox/x.sh` containing `bd close`, `env -i` survival, embedded-quoted verb, GNU `parallel`                                                                                                                                               | OS container + human triage                                                             |
+| Path-qualified `sudo` (`/usr/bin/sudo`)       | evades the word-match                                                                                                                                                                                                                            | platform safety hook + container                                                        |
+| The acceptance gate's own interpreter         | a sandbox-shimmed `bash` could interpret the gate and forge a PASS                                                                                                                                                                               | it's a _quality_ gate, not a boundary; launch-time trust is the container + human merge |
 
 **The load-bearing caveat: the container is not always on, and it is networked.** The OS isolation
 container (networked by default — `FORGE_SANDBOX_NETWORK=bridge`; read-only mounts of the enforcement
@@ -91,12 +91,12 @@ files, dropped caps, unprivileged user) is brought up **by default for target-re
 real backstop is the deny hook (for the shapes it models) plus the human merge (for everything it
 concedes); and because the container is networked, even a container build bounds filesystem/process
 blast radius but **not** network egress. This is the single most important reframing of the security
-story: *the human merge is the completeness boundary.*
+story: _the human merge is the completeness boundary._
 
 **Subprocess blindness (architectural).** `PreToolUse` sees only the tool-call input — the command
 string, file path, and content. It never sees the process tree a command spawns. A script the agent
 writes into `sandbox/` and then runs exposes only `bash sandbox/foo.sh` to the hook; the verbs inside
-are never classified. This is *why* the launch/interpreter/exotic-writer classes are conceded to the
+are never classified. This is _why_ the launch/interpreter/exotic-writer classes are conceded to the
 container. The reconcile bead-close deliberately relies on this (it runs as a subprocess, so the
 `bd close` deny "over-blocks zero automation").
 
@@ -127,7 +127,7 @@ mechanism itself concedes or only partially models:
   git wrapper neutralizes `core.hooksPath` and `fsmonitor` but not these.
 - **The TTY gate is an attendance signal, not proof of a human.** An agent that allocates a PTY and
   routes `ratify` through a wrapper is not caught by the TTY check; that class is deferred to
-  OS-level confinement of unattended runs. (The ratify *tokens* remain non-forgeable either way —
+  OS-level confinement of unattended runs. (The ratify _tokens_ remain non-forgeable either way —
   hash-bound, stored under an agent-unwritable path, re-verified at `convert`.)
 - **The acceptance gate has a check-to-use window.** Between its checks and the release action the
   tree can change; the gate is a quality gate, and the human merge is the boundary that absorbs this.
@@ -158,10 +158,10 @@ Both fail closed; neither opens a hole.
   - **Read side (P7).** The vault is now **optionally configurable** (`harness/vault.config`, a
     gitignored `<name>=/absolute/path` map) and resolvable through a **read-only, paths-only** helper
     (`harness/vault.sh paths` prints the configured absolute existing dirs; `doctor` summarizes
-    "configured N; present M"). It reads no vault *content*, never writes, returns no verdict, and is
+    "configured N; present M"). It reads no vault _content_, never writes, returns no verdict, and is
     invoked by no gate, reconcile, branch, or floor path — so it stays **advisory and gate-blind**:
     absent config, the loop runs unchanged; present config never drives acceptance, bead, branch,
-    security, or merge authority. Read-only-*from-the-Forge* remains a **convention**, not an enforced
+    security, or merge authority. Read-only-_from-the-Forge_ remains a **convention**, not an enforced
     guarantee — the deny floor still makes **no** vault claim (the note above stands unchanged), and the
     leaky "enforced" wording is deliberately not reintroduced.
 - **Network egress** — **not controlled by default.** The container is networked
@@ -172,7 +172,7 @@ Both fail closed; neither opens a hole.
 - **The target repo's own code quality** — the harness gates the target's configured tests/lint, not
   the correctness of its source.
 - **Launch-time interpreter/PATH trust and obfuscation** — conceded to the container + human merge.
-- **Reviewer judgment quality.** The reviewer is advisory and non-gating *by design*: findings land as
+- **Reviewer judgment quality.** The reviewer is advisory and non-gating _by design_: findings land as
   a plain PR comment, never a blocking review, and severity ratings — especially from small local
   models — are unreliable. The human merge judgment is the control; do not treat reviewer output as a
   gate.
@@ -188,11 +188,11 @@ Both fail closed; neither opens a hole.
   is the completeness boundary; for a container build the merge is still the release boundary and the
   container adds filesystem/process isolation — but, being networked, not egress control.
 - **Client-side capability denies, not server-side branch protection.** "Agents never merge / never
-  push `main`" is enforced against the agent's *tool calls*. The deny hook now denies the agent's Bash
+  push `main`" is enforced against the agent's _tool calls_. The deny hook now denies the agent's Bash
   `gh pr merge` (plus repo-admin / secret / auth / workflow / `gh api` write paths) as a bounded
   **client-side capability boundary** — defense-in-depth, **not** server-side branch protection. There is
-  still no git pre-*push* hook, and a human with a terminal (a non-agent shell / the GitHub UI, invisible
-  to this hook) is still trusted. The reviewer *role* is additionally mechanically merge-incapable (tool
+  still no git pre-_push_ hook, and a human with a terminal (a non-agent shell / the GitHub UI, invisible
+  to this hook) is still trusted. The reviewer _role_ is additionally mechanically merge-incapable (tool
   ceiling). Configure branch protection on your hosting platform if you want a server-side guarantee.
 - **`intake.sh clarify` and `abort` are not TTY-gated** — unlike `ratify`, they are agent-invocable.
   This is convention, not mechanism; but `clarify` only lifts the question budget and `abort` only
@@ -218,7 +218,7 @@ The Forge does not claim to be an impenetrable sandbox, and you should not prese
 claims to be a **deterministic control plane with a human-gated release** — a floor that reliably
 blocks the easy dangerous shapes and fails closed, an audited set of human-only doors, and a human who
 reviews and merges every change. Where that floor is porous, it says so, an OS container closes the
-gap *when it is enabled*, and the human merge closes it otherwise. That is the guarantee.
+gap _when it is enabled_, and the human merge closes it otherwise. That is the guarantee.
 
 ## How to read this document
 
@@ -228,7 +228,7 @@ over-blocks you hit, gaps you probe, mitigations you accept-and-defer. Maintain 
 file each residual as a bead (e.g. `fx-…`) and tag it with the taxonomy this document uses:
 
 - **`[mech-mitigated]`** — a mechanical control reduces the risk but doesn't fully close it (often an
-  over-block that fails *safe*).
+  over-block that fails _safe_).
 - **`[best-effort]`** — a textual best-effort with the OS container as backstop (recall §2: the
   container is default for target builds and host-side for attended self-build, and it is networked —
   filesystem/process isolation, not egress control).

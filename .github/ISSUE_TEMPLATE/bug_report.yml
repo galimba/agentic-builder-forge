@@ -34,6 +34,6 @@ body:
     id: env
     attributes:
       label: Environment
-      placeholder: "OS, bash version, agent platform (claude-code/codex), bd version, docker yes/no"
+      placeholder: 'OS, bash version, agent platform (claude-code/codex), bd version, docker yes/no'
     validations:
       required: true

@@ -22,14 +22,14 @@ bash .forge/scripts/doctor.sh          # diagnostics
 
 ## Where things live
 
-| Path | What |
-|------|------|
-| `specs/` | Ratified spec packets (intake output) |
-| `harness/` | The mechanism: runner, intake, gates, reviewer, sandbox |
-| `.claude/` | Enforcement floor (hooks) + agent role cards + skills |
-| `harness/*.config` | The customization surface (targets, reviewers, ledger, repos) |
-| `docs/` | Architecture, lifecycle, operating guide, honest limitations |
-| `docs/onboarding.md` | Start here if you are new |
+| Path                 | What                                                          |
+| -------------------- | ------------------------------------------------------------- |
+| `specs/`             | Ratified spec packets (intake output)                         |
+| `harness/`           | The mechanism: runner, intake, gates, reviewer, sandbox       |
+| `.claude/`           | Enforcement floor (hooks) + agent role cards + skills         |
+| `harness/*.config`   | The customization surface (targets, reviewers, ledger, repos) |
+| `docs/`              | Architecture, lifecycle, operating guide, honest limitations  |
+| `docs/onboarding.md` | Start here if you are new                                     |
 
 ## House rules
 

@@ -6,7 +6,7 @@
 > `crosswalk.json` (local `T0NN` ids → minted `fx-xxx` bead ids, written by `intake.sh convert`). The
 > lifecycle it walked: `intake.sh start` → one clarify round (then budget exhausted → flagged
 > assumptions) → Gate-A restatement (one DISAGREE, reconciled) → `intake.sh ratify` → `intake.sh
-> convert` minted four beads → `run-task` built each in an isolated worktree → `finish` opened a PR per
+convert` minted four beads → `run-task` built each in an isolated worktree → `finish` opened a PR per
 > task → a human merged → `reconcile` closed the beads. The target repo `example-target` matches the
 > entry in `harness/repos.config.example`; every id below is an example, nothing here is live.
 
@@ -398,9 +398,7 @@ topological order, and recorded the mapping in `crosswalk.json` beside this spec
       "success_criteria": ["SC-003"],
       "scope": ["src/textstat/**", "tests/textstat/**"],
       "dod_tests": ["tests/textstat/run.sh"],
-      "sc_evidence": [
-        { "sc": 1, "path": "tests/textstat/evidence/t003-sc1-stdin-parity.txt" }
-      ],
+      "sc_evidence": [{ "sc": 1, "path": "tests/textstat/evidence/t003-sc1-stdin-parity.txt" }],
       "verification": "pipe a fixture through the CLI and diff against the file-operand output"
     },
     {
@@ -417,9 +415,7 @@ topological order, and recorded the mapping in `crosswalk.json` beside this spec
       "success_criteria": ["SC-004"],
       "scope": ["src/textstat/**", "tests/textstat/**"],
       "dod_tests": ["tests/textstat/run.sh"],
-      "sc_evidence": [
-        { "sc": 1, "path": "tests/textstat/evidence/t004-sc1-json-roundtrip.txt" }
-      ],
+      "sc_evidence": [{ "sc": 1, "path": "tests/textstat/evidence/t004-sc1-json-roundtrip.txt" }],
       "verification": "parse the --json output and compare fields to the plain-form counts"
     }
   ]

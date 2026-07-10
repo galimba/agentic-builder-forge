@@ -8,10 +8,10 @@ merge → closed). Each stage below is tagged by who acts:
 - **AGENT** — the LLM does the work, bounded by mechanical floors. Enforcement is
   **Claude-Code-first**: under Claude Code the real-time hook floor applies; another agent (e.g. Codex)
   can drive the same loop but under a weaker floor — the git hooks and fail-closed scripts only.
-- **HUMAN** — a person must act; where that requirement is *mechanical* vs. *convention* is called
+- **HUMAN** — a person must act; where that requirement is _mechanical_ vs. _convention_ is called
   out, because it matters for the trust model.
 
-The unit of work is a **bead** (`open → in_progress → in_review → closed`; `ready` is a *derived*
+The unit of work is a **bead** (`open → in_progress → in_review → closed`; `ready` is a _derived_
 query — a bead with no open blockers — not a stored status).
 
 ---
@@ -21,17 +21,17 @@ query — a bead with no open blockers — not a stored status).
 Turns an objective into a human-ratified, decomposed spec and mints the beads the build loop claims.
 Two human sign-offs bracket it; everything between is the session's.
 
-| Stage | Command / where | Actor | Notes |
-| --- | --- | --- | --- |
-| Scaffold | `intake.sh start "<objective>" --target <repo[,repo]> [--mode interactive\|autonomous]` | AUTOMATED | Creates `specs/NNN-<slug>/spec.md` from the template, arms the intake sentinel. No TTY gate — an agent can run it. |
-| Clarify loop | clarify skill, bounded by `pre-tool-use-clarify-gate.sh` + `stop-gate-intake.sh` | AGENT in a mechanical bracket | Budgeted question rounds; every unresolved ambiguity is *routed* to an `[ASSUMED]` entry, never dropped. Autonomous mode never asks a human. |
-| Grant more rounds | `intake.sh clarify [--axis <id>]` | HUMAN by convention | **Not TTY-gated** — an agent's Bash can run it. The "human grant" is convention, not mechanism (unlike `ratify`). Re-opens Gate A and invalidates the ratify token if already ratified. |
-| Spec review | `intake.sh spec-review` (captures a `spec-reviewer` verdict) | AUTOMATED capture of an AGENT reviewer | Read-only adversarial review vs. the coverage taxonomy; the verdict is advisory in content but its open-finding count is the mechanical consensus input at Gate A. |
-| **Gate A — ratify** | `intake.sh ratify` | **HUMAN (mechanical)** | TTY-gated (`[ -t 0 ] && [ -t 1 ]`); the agent's non-TTY Bash cannot pass it. Binds a non-forgeable token to `sha256(understanding.md)` + the FR-line hash. |
-| Decompose | decompose skill (writes the Task Breakdown block) | AGENT | Produces tasks with binary DoD and measurable, tech-agnostic success criteria, plus the three machine fields (`scope`, `dod_tests`, `sc_evidence`). |
-| **Gate A′ — ratify-breakdown** | `intake.sh ratify-breakdown` | **HUMAN (mechanical)** | TTY-gated like Gate A. A second token binds `sha256(the Task Breakdown)`, so `convert` mints only a breakdown a human approved. |
-| **Gate B — analyze** | `intake.sh analyze` | AUTOMATED (no LLM) | Nine Task-Breakdown invariants + bidirectional FR↔task traceability, all pure `awk`/`grep`/`jq`. |
-| Convert / mint | `intake.sh convert` | AUTOMATED, gated on both human tokens | Re-hashes both tokens (anti-TOCTOU), checks freshness, runs the witness preflight, then mints beads in dependency order via `bd create` and writes `crosswalk.json` (`T0NN → bead-id`). Wipes all intake state. |
+| Stage                          | Command / where                                                                         | Actor                                  | Notes                                                                                                                                                                                                           |
+| ------------------------------ | --------------------------------------------------------------------------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Scaffold                       | `intake.sh start "<objective>" --target <repo[,repo]> [--mode interactive\|autonomous]` | AUTOMATED                              | Creates `specs/NNN-<slug>/spec.md` from the template, arms the intake sentinel. No TTY gate — an agent can run it.                                                                                              |
+| Clarify loop                   | clarify skill, bounded by `pre-tool-use-clarify-gate.sh` + `stop-gate-intake.sh`        | AGENT in a mechanical bracket          | Budgeted question rounds; every unresolved ambiguity is _routed_ to an `[ASSUMED]` entry, never dropped. Autonomous mode never asks a human.                                                                    |
+| Grant more rounds              | `intake.sh clarify [--axis <id>]`                                                       | HUMAN by convention                    | **Not TTY-gated** — an agent's Bash can run it. The "human grant" is convention, not mechanism (unlike `ratify`). Re-opens Gate A and invalidates the ratify token if already ratified.                         |
+| Spec review                    | `intake.sh spec-review` (captures a `spec-reviewer` verdict)                            | AUTOMATED capture of an AGENT reviewer | Read-only adversarial review vs. the coverage taxonomy; the verdict is advisory in content but its open-finding count is the mechanical consensus input at Gate A.                                              |
+| **Gate A — ratify**            | `intake.sh ratify`                                                                      | **HUMAN (mechanical)**                 | TTY-gated (`[ -t 0 ] && [ -t 1 ]`); the agent's non-TTY Bash cannot pass it. Binds a non-forgeable token to `sha256(understanding.md)` + the FR-line hash.                                                      |
+| Decompose                      | decompose skill (writes the Task Breakdown block)                                       | AGENT                                  | Produces tasks with binary DoD and measurable, tech-agnostic success criteria, plus the three machine fields (`scope`, `dod_tests`, `sc_evidence`).                                                             |
+| **Gate A′ — ratify-breakdown** | `intake.sh ratify-breakdown`                                                            | **HUMAN (mechanical)**                 | TTY-gated like Gate A. A second token binds `sha256(the Task Breakdown)`, so `convert` mints only a breakdown a human approved.                                                                                 |
+| **Gate B — analyze**           | `intake.sh analyze`                                                                     | AUTOMATED (no LLM)                     | Nine Task-Breakdown invariants + bidirectional FR↔task traceability, all pure `awk`/`grep`/`jq`.                                                                                                                |
+| Convert / mint                 | `intake.sh convert`                                                                     | AUTOMATED, gated on both human tokens  | Re-hashes both tokens (anti-TOCTOU), checks freshness, runs the witness preflight, then mints beads in dependency order via `bd create` and writes `crosswalk.json` (`T0NN → bead-id`). Wipes all intake state. |
 
 Two commands the human can run anytime: `intake.sh clarify` (grant a round, even past budget) and
 `intake.sh abort` (clear intake state; the spec under `specs/` is left in place). `abort`, like
@@ -40,7 +40,7 @@ Two commands the human can run anytime: `intake.sh clarify` (grant a round, even
 **Why the ratify gates are the real intake guarantee:** the deny hook has a string matcher that
 denies an agent typing `intake.sh ratify`, but that is defense-in-depth. The actual guarantee is the
 TTY check inside the command plus the fact that the token lives under `.harness/` (which the agent
-cannot write). A residual remains — an agent that allocates a PTY *and* routes through a wrapper file
+cannot write). A residual remains — an agent that allocates a PTY _and_ routes through a wrapper file
 dodging the string matcher — and it is conceded to OS-level confinement (see
 [`limitations.md`](limitations.md)).
 
@@ -74,7 +74,7 @@ flowchart LR
    unless `FORGE_SANDBOX=1`**, before any side effect. An attended **self-build** is exempt — it runs
    host-side (the documented maintenance exception); an attended **target** build is containerized by
    default (see stage 7).
-4. `--new` mints a one-off bead (`bd create`) directly — the only *ad-hoc* create path in the build
+4. `--new` mints a one-off bead (`bd create`) directly — the only _ad-hoc_ create path in the build
    loop, and a deliberate exception: in the normal flow **beads are architect-generated from a ratified
    spec** (intake → `convert`), and a `--new` bead carries no acceptance contract (see
    [`limitations.md`](limitations.md) and the acceptance gate). Otherwise the bead must exist, be
@@ -99,7 +99,7 @@ on sandbox writes, and the Stop tests-gate.
 
 **The Stop tests-gate is mode-split** — a distinction that is easy to over-claim:
 
-- **Unattended (`FORGE_UNATTENDED=1`):** the gate *never* releases on red. A wedged session is ended
+- **Unattended (`FORGE_UNATTENDED=1`):** the gate _never_ releases on red. A wedged session is ended
   by the external wall-clock reaper, not by the gate.
 - **Attended:** the gate blocks on red but **releases after a cap** (`FORGE_STOP_BLOCK_CAP`, default 8)
   with a "human intervention needed" message. So "you cannot declare done while red" is literally true
@@ -112,7 +112,7 @@ on sandbox writes, and the Stop tests-gate.
 1. **Witness gate** — prove the enforcement floor is loaded and unchanged in this session (hard under
    unattended; conditional attended).
 2. **Tests green** — run `TEST_CMD`; red dies. (For a feature build where a sibling already merged,
-   a red gate is recorded as a *partial* and the bead stays claimed, rather than a hard die.)
+   a red gate is recorded as a _partial_ and the bead stays claimed, rather than a hard die.)
 3. **Acceptance gate `--mode staged`** (`accept-gate.sh`, via a hardcoded `/usr/bin/bash`) — diff ⊆
    scope, DoD tests pass, success-criteria evidence present, integrity sha. No LLM.
 4. Self builds: export the `bd` ledger snapshot into the worktree so it reaches `main` only through
@@ -159,7 +159,7 @@ harness-written PR record, it asks GitHub once whether the PR merged, and closes
   the agent-writable record branch; a documented best-effort residual).
 
 On close it runs `bd close --reason "merged: repo#pr"` and consumes the PR record. The same reconcile
-also runs *quietly, best-effort* after `status` and `ready` — so `sync` is the only *blocking* close
+also runs _quietly, best-effort_ after `status` and `ready` — so `sync` is the only _blocking_ close
 path, not the only one. **Never `bd close` by hand** (it is denied for the agent; humans go through
 `sync`).
 
@@ -169,7 +169,7 @@ Like `clarify`/`abort`, it is **not TTY-gated** — an agent's Bash can run it (
 prints it as the abort instruction) — but it only releases/destroys state, never forges anything.
 Removes the worktree/branch/sentinel, releases the bead to `open`, tears the container down, and
 deletes the PR record so a re-claim can't inherit a merged-PR record. It does **not** reap leftover
-worktrees of already-merged tasks; the container reaper (`reaper.sh`) sweeps *containers* only. See
+worktrees of already-merged tasks; the container reaper (`reaper.sh`) sweeps _containers_ only. See
 [`operating.md`](operating.md#retention-and-cleanup) for the accumulation realities.
 
 ---
@@ -179,13 +179,13 @@ worktrees of already-merged tasks; the container reaper (`reaper.sh`) sweeps *co
 The Forge operates on three kinds of work; the classification happens at `start` from the bead's
 `metadata.target_repo`.
 
-| | Self build | Target build | Feature build |
-| --- | --- | --- | --- |
-| **What** | The Forge builds itself. | The Forge builds into an external repo. | A group of beads sharing a `source_spec`, assembled into one PR. |
-| **Trigger** | No `target_repo`, or one resolving to the Forge's own name/git store. | An external `target_repo`, resolved through the gitignored `harness/repos.config` name→abs-path map (a *distinct* git store). | A bead carries `source_spec`; bases on `feat/<spec-slug>`. |
-| **Worktree** | Of the Forge; confined to `sandbox/`. | Of the *target* repo; confined to the resolved `work_root`. | As self or target, based on the feature branch. |
-| **PR** | Carries the `bd` ledger snapshot. | Pristine — Forge artifacts stripped and asserted absent (H3). | One shared feature PR; every sibling bead's record points at it so they close together on merge. |
-| **Ledger / floor** | — | Stay Forge-side throughout (`bd` runs `-C <forge root>`). | — |
+|                    | Self build                                                            | Target build                                                                                                                  | Feature build                                                                                    |
+| ------------------ | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| **What**           | The Forge builds itself.                                              | The Forge builds into an external repo.                                                                                       | A group of beads sharing a `source_spec`, assembled into one PR.                                 |
+| **Trigger**        | No `target_repo`, or one resolving to the Forge's own name/git store. | An external `target_repo`, resolved through the gitignored `harness/repos.config` name→abs-path map (a _distinct_ git store). | A bead carries `source_spec`; bases on `feat/<spec-slug>`.                                       |
+| **Worktree**       | Of the Forge; confined to `sandbox/`.                                 | Of the _target_ repo; confined to the resolved `work_root`.                                                                   | As self or target, based on the feature branch.                                                  |
+| **PR**             | Carries the `bd` ledger snapshot.                                     | Pristine — Forge artifacts stripped and asserted absent (H3).                                                                 | One shared feature PR; every sibling bead's record points at it so they close together on merge. |
+| **Ledger / floor** | —                                                                     | Stay Forge-side throughout (`bd` runs `-C <forge root>`).                                                                     | —                                                                                                |
 
 Target builds are the Forge's primary purpose in practice — building into external repos while the
 ledger and the enforcement floor stay Forge-side. To run one: give the bead a `metadata.target_repo`,
