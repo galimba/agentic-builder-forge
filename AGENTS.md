@@ -22,7 +22,7 @@ notes live in `CODEX.md`.
 - **If you keep a sibling knowledge repo (e.g. `../my-vault`), it is read-only to the Forge.**
   Never write to or commit anything there.
 - **The `.beads/` ledger is bd-managed.** Never hand-edit it — mutate the ledger only through
-  `bd`. Raw writes and shell redirects into `.beads/**` are denied; `bd` commands and *reads* of
+  `bd`. Raw writes and shell redirects into `.beads/**` are denied; `bd` commands and _reads_ of
   the ledger are allowed.
 - **Stay in the sandbox.** During a task run, write only inside the task's worktree (and
   `sandbox/` in this repo). A target-repo build runs inside a **networked** isolation container by
@@ -40,9 +40,9 @@ notes live in `CODEX.md`.
   **human ratify**, then decomposition into beads. No beads are minted from an unratified spec.
 - **Work is a bead**, and beads are **architect-generated from a ratified spec** (intake →
   `convert`) — that is the normal create path. Bead IDs carry your ledger prefix (`{{BEAD_PREFIX}}`;
-  examples in these docs use `fx`, e.g. `fx-123`). Claim a *ready* bead before starting
+  examples in these docs use `fx`, e.g. `fx-123`). Claim a _ready_ bead before starting
   (`./harness/run-task.sh start <bead-id>` — fails closed if it's missing, not ready, or already
-  claimed). `start --new "<desc>"` is the only *ad-hoc* create path in the build loop — a deliberate
+  claimed). `start --new "<desc>"` is the only _ad-hoc_ create path in the build loop — a deliberate
   exception for a quick single task; such a bead carries no acceptance contract, so it is not the
   normal path.
 - One task → one git **worktree + branch**. The shared checkout is never modified directly.

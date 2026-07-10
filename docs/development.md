@@ -57,8 +57,8 @@ A change that alters any of the five floor-hash inputs (see
 [`architecture.md`](architecture.md#the-floor-identity)) "moves the floor" and must be
 re-certified before it lands. The discipline the `recert-*.sh` scripts encode:
 
-1. **Behavioral corpus differential.** Drive an identical corpus of commands through the *old* (live)
-   deny hook and the *new* (candidate overlay) hook and assert the verdict delta is **exactly** the
+1. **Behavioral corpus differential.** Drive an identical corpus of commands through the _old_ (live)
+   deny hook and the _new_ (candidate overlay) hook and assert the verdict delta is **exactly** the
    intended DENY↔ALLOW flips for this change — with **zero collateral** on Forge-own paths
    (`.git`, `.beads`, `harness`, `.claude/settings`). A flip that wasn't intended is a failure.
 2. **Hash labels via `forge_floor_hash`** (not a hand-rolled `cat`): the old hash must equal the
@@ -72,7 +72,7 @@ re-certified before it lands. The discipline the `recert-*.sh` scripts encode:
 A change that touches a protected file but **not** a floor-hash input skips re-certification. Nothing
 under `harness/**` is a floor-hash input — not `harness/targets.config`, and not even
 `harness/githooks/pre-commit` (that guard is verified by its own `test:commitguard` suite, not by the
-floor hash). Such a change must still *prove* the five inputs are byte-unchanged (the floor hash did
+floor hash). Such a change must still _prove_ the five inputs are byte-unchanged (the floor hash did
 not move), so the witness doesn't need to re-mint.
 
 ## The proof model
@@ -85,10 +85,10 @@ Correctness is proven before merge, and the tests are structured so proof can't 
 - **Three verdicts, never conflated:** rc 0 = PASS, rc 75 = SKIP (e.g. Docker absent), anything else
   = FAIL. Zero discovered suites is itself a failure. Unattended runs go strict (SKIP → FAIL).
 - **Floor tests self-guard.** Each floor/boundary test brackets its run with a `git hash-object` of
-  `lib.sh` before and after and asserts *it* didn't move the floor — the deliberate move is proven in
+  `lib.sh` before and after and asserts _it_ didn't move the floor — the deliberate move is proven in
   the recert, not by a test mutating the live floor.
 - **Folds drive the hook as a subprocess.** A fold feeds a synthetic tool-call JSON to the hook script
-  on stdin and greps the verdict. The attack command is *classified as a string*, never executed —
+  on stdin and greps the verdict. The attack command is _classified as a string_, never executed —
   `sudo …`/`rm -rf …` are analyzed, not run.
 - **Over-block is the primary failure mode.** Every fold carries an explicit allow-list section:
   legitimate in-bounds commands with real-world flags must still pass. Blocking real work is treated
@@ -110,14 +110,14 @@ same rule up front: **the hooks are the boundary, not this prose** — an intera
 session does not honor a subagent's `tools:` restriction, so the file documents the role while the
 hooks do the enforcing.
 
-| Role | Tool ceiling | May do | May not | Enforced by |
-| --- | --- | --- | --- | --- |
-| **architect** | Read, Grep, Glob, Write, Edit, AskUserQuestion, Task | Author a spec under `specs/**`, drive the clarify loop and Gate-A restatement, write the Task Breakdown. | Mint beads, run `bd`, self-ratify, touch code/harness/hooks/ledger, write the vault. | Intake `specs/**` write-allowlist; `ratify` TTY gate + deny-hook command forms; clarify/Stop floors. |
-| **builder** | Read, Grep, Glob, Edit, Write, MultiEdit, Bash | One task, test-first, write only under the work root, end with `finish` → PR. | Push/commit `main`, `--no-verify`, edit enforcement files (all *mechanical*); merge, review own work (by *convention* + a client-side deny — the builder has Bash; `gh pr merge` and the repo-admin/secret/auth/workflow/gh-api-write surfaces are denied by the deny hook as defense-in-depth, but a human in a non-agent shell is still trusted for the merge). | Deny hook, git pre-commit guard, Stop gate, PostToolUse format/lint (for the mechanical items); workflow separation + the human merge (for merge/self-review). |
-| **reviewer** | Read, Grep, Glob | Adversarial PR-diff review; severity-tagged advisory findings in a sentinel JSON block. | Write, push, comment directly, merge, or **gate** — the verdict is advisory; the deterministic tests are what must pass and the human decides the merge. | Tool grant (no Write/Bash); harness fails closed and posts "manual verification required" on a missing/malformed verdict. |
-| **disposition** | Read, Grep, Glob | Adjudicate each *supplied* reviewer finding CONFIRMED/REBUTTED against the diff. | Hunt new findings, write/fix/merge, gate. | Tool grant; fail-closed sentinel record. |
-| **spec-reviewer** | Read, Grep, Glob | Review a draft spec vs. the coverage taxonomy; ACCEPT/ESCALATE the architect's reconciliations. | Ratify, block, or use conversation context — the human ratifies at Gate A. | Tool grant; the harness owns its output slice. |
-| **human** | — | Ratify Gate A / A′ (TTY), set the escape doors post-review, **merge PRs**, run `sync`. | — | TTY gates, launch-environment doors, GitHub — none agent-reachable through the Forge tooling. |
+| Role              | Tool ceiling                                         | May do                                                                                                   | May not                                                                                                                                                                                                                                                                                                                                                           | Enforced by                                                                                                                                                    |
+| ----------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **architect**     | Read, Grep, Glob, Write, Edit, AskUserQuestion, Task | Author a spec under `specs/**`, drive the clarify loop and Gate-A restatement, write the Task Breakdown. | Mint beads, run `bd`, self-ratify, touch code/harness/hooks/ledger, write the vault.                                                                                                                                                                                                                                                                              | Intake `specs/**` write-allowlist; `ratify` TTY gate + deny-hook command forms; clarify/Stop floors.                                                           |
+| **builder**       | Read, Grep, Glob, Edit, Write, MultiEdit, Bash       | One task, test-first, write only under the work root, end with `finish` → PR.                            | Push/commit `main`, `--no-verify`, edit enforcement files (all _mechanical_); merge, review own work (by _convention_ + a client-side deny — the builder has Bash; `gh pr merge` and the repo-admin/secret/auth/workflow/gh-api-write surfaces are denied by the deny hook as defense-in-depth, but a human in a non-agent shell is still trusted for the merge). | Deny hook, git pre-commit guard, Stop gate, PostToolUse format/lint (for the mechanical items); workflow separation + the human merge (for merge/self-review). |
+| **reviewer**      | Read, Grep, Glob                                     | Adversarial PR-diff review; severity-tagged advisory findings in a sentinel JSON block.                  | Write, push, comment directly, merge, or **gate** — the verdict is advisory; the deterministic tests are what must pass and the human decides the merge.                                                                                                                                                                                                          | Tool grant (no Write/Bash); harness fails closed and posts "manual verification required" on a missing/malformed verdict.                                      |
+| **disposition**   | Read, Grep, Glob                                     | Adjudicate each _supplied_ reviewer finding CONFIRMED/REBUTTED against the diff.                         | Hunt new findings, write/fix/merge, gate.                                                                                                                                                                                                                                                                                                                         | Tool grant; fail-closed sentinel record.                                                                                                                       |
+| **spec-reviewer** | Read, Grep, Glob                                     | Review a draft spec vs. the coverage taxonomy; ACCEPT/ESCALATE the architect's reconciliations.          | Ratify, block, or use conversation context — the human ratifies at Gate A.                                                                                                                                                                                                                                                                                        | Tool grant; the harness owns its output slice.                                                                                                                 |
+| **human**         | —                                                    | Ratify Gate A / A′ (TTY), set the escape doors post-review, **merge PRs**, run `sync`.                   | —                                                                                                                                                                                                                                                                                                                                                                 | TTY gates, launch-environment doors, GitHub — none agent-reachable through the Forge tooling.                                                                  |
 
 ## If you spot a code/comment inconsistency
 
@@ -125,5 +125,5 @@ Some in-tree comments and doc fragments can lag the code (e.g. a provenance head
 splice, or a script header that under-counts the floor-hash inputs). These are cosmetic. File a bead
 (via the intake flow or `run-task.sh start --new`) rather than editing an enforcement file directly —
 and never "fix" a comment by taking the door unless the human is doing the splice. The documentation
-set here is written to be internally consistent with the *code's behavior*; where a source comment
+set here is written to be internally consistent with the _code's behavior_; where a source comment
 contradicts the code, the code is authoritative.

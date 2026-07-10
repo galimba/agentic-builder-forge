@@ -30,7 +30,7 @@ MD025: false
 
 # Allow trailing punctuation in headings
 MD026:
-  punctuation: ".,;:!"
+  punctuation: '.,;:!'
 
 # Allow multiple blank lines
 MD012:

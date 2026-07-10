@@ -14,14 +14,14 @@ repository is **infrastructure** — a build harness — not a documentation or 
 
 ## The enforcement floor (Claude Code hooks)
 
-| Hook | Event | What it enforces |
-| --- | --- | --- |
-| `pre-tool-use-deny.sh` | `PreToolUse` | Hard `deny` for destructive command shapes: `rm -rf` outside the sandbox, force-push, push/commit to `{{DEFAULT_BRANCH}}`, `--no-verify`, secret-shaped literals, raw writes into `.beads/**`, and writes to the enforcement files themselves. |
-| `post-tool-use-format.sh` | `PostToolUse` | Auto-formats and lints every `Write`/`Edit`, using the commands in `harness/targets.config`. |
-| `stop-gate-tests.sh` | `Stop` | Blocks ending a build turn while `tests/run-all.sh` is red; the failure is fed back into the loop. |
-| `stop-gate-intake.sh` | `Stop` | Blocks ending an intake session before the spec has passed the clarify loop and been human-ratified. |
-| `pre-tool-use-clarify-gate.sh` | `PreToolUse` | Enforces the intake clarify/restate budgets (`harness/intake.config`) before spec writes. |
-| `session-start-witness.sh` | `SessionStart` | **Self-mints** the floor's integrity baseline at session start (no committed hash); tampering after that point is detected. |
+| Hook                           | Event          | What it enforces                                                                                                                                                                                                                               |
+| ------------------------------ | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pre-tool-use-deny.sh`         | `PreToolUse`   | Hard `deny` for destructive command shapes: `rm -rf` outside the sandbox, force-push, push/commit to `{{DEFAULT_BRANCH}}`, `--no-verify`, secret-shaped literals, raw writes into `.beads/**`, and writes to the enforcement files themselves. |
+| `post-tool-use-format.sh`      | `PostToolUse`  | Auto-formats and lints every `Write`/`Edit`, using the commands in `harness/targets.config`.                                                                                                                                                   |
+| `stop-gate-tests.sh`           | `Stop`         | Blocks ending a build turn while `tests/run-all.sh` is red; the failure is fed back into the loop.                                                                                                                                             |
+| `stop-gate-intake.sh`          | `Stop`         | Blocks ending an intake session before the spec has passed the clarify loop and been human-ratified.                                                                                                                                           |
+| `pre-tool-use-clarify-gate.sh` | `PreToolUse`   | Enforces the intake clarify/restate budgets (`harness/intake.config`) before spec writes.                                                                                                                                                      |
+| `session-start-witness.sh`     | `SessionStart` | **Self-mints** the floor's integrity baseline at session start (no committed hash); tampering after that point is detected.                                                                                                                    |
 
 The canonical completion gate is `tests/run-all.sh`: it discovers every `test:*` script in
 `package.json`, reports PASS / SKIP(75) / FAIL, and fails closed.

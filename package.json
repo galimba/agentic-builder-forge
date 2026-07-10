@@ -6,7 +6,7 @@
   "description": "Deterministic agentic build-harness template — enforcement-first, human-supervised. Clone, init, and run your own.",
   "packageManager": "pnpm@10.4.1",
   "engines": {
-    "node": ">=18.18"
+    "node": ">=20.19"
   },
   "scripts": {
     "test": "bash tests/run-all.sh",
@@ -44,7 +44,7 @@
     "test:fold12-bdbin": "bash tests/boundary/fold12-bdbin.sh",
     "test:fold14-target": "bash tests/boundary/fold14-target-selector.sh",
     "test:fold10-witness": "bash tests/boundary/fold10-witness-fsmonitor.sh",
-    "lint": "eslint .",
+    "lint": "eslint . --no-error-on-unmatched-pattern",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
@@ -66,7 +66,7 @@
     "test:fold32-topology": "bash tests/boundary/fold32-topology.sh"
   },
   "devDependencies": {
-    "@eslint/js": "^9.9.0",
+    "@eslint/js": "^10.0.1",
     "@types/node": "^26.1.1",
     "eslint": "^10.6.0",
     "eslint-config-prettier": "^10.1.8",

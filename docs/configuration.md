@@ -5,21 +5,21 @@ else is mechanism.
 
 ## Init-time identity (asked once by `.forge/scripts/init.sh`)
 
-| Value | Placeholder / target | Notes |
-|-------|---------------------|-------|
-| Repository name | `{{REPO_NAME}}` in docs, `package.json` name | lowercase, URL-safe |
-| Organization name | `{{ORG_NAME}}` in docs | display name |
-| GitHub org/user | `{{GITHUB_ORG}}` in docs, issue links | |
-| Maintainer | `{{MAINTAINER}}` in CODEOWNERS, CoC | user or team |
-| Platform | `{{PLATFORM}}` | claude-code / codex / custom |
-| Default branch | `{{DEFAULT_BRANCH}}` | the mechanical commit/push guard protects `main`/`master` by name; any other value relies on branch protection + convention |
-| Ledger prefix | `BD_PREFIX` in `harness/beads.config` + `bd init -p` | task IDs: `<prefix>-xxxx` |
-| Harness git author | `harness/sandbox-lib.sh` | automated commits say "the harness made this" — substituted, not read from git config (the sandbox runs `env -i`) |
-| Reviewer backend | `REVIEWER_BACKEND` default in `harness/reviewers.config` | detected: prefers claude-fresh in a Claude Code environment, else ollama |
-| Target-repo branch namespace | `FORGE_TARGET_BRANCH_NS` in `harness/branches.config` | target-repo builder branches `<ns>/builder/<id>-<slug>`; default `forge/agent`; trusted by the reconcile close |
-| Container network | `FORGE_SANDBOX_NETWORK` (**env-only knob**) | default `bridge` (networked); `none` restores egress-deny. Init prompts + records the choice but does not persist it — export a non-default value in the shell/CI env |
-| Container-default for targets | `FORGE_TARGET_CONTAINER` (**env-only knob**) | default `1` (container-default target builds); `0` = host-side. Same env-only handling as above |
-| Marker namespace | `forge:` -> `<yours>:` everywhere it is emitted AND parsed | default fine; init renames atomically and verifies count parity |
+| Value                         | Placeholder / target                                       | Notes                                                                                                                                                                 |
+| ----------------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Repository name               | `{{REPO_NAME}}` in docs, `package.json` name               | lowercase, URL-safe                                                                                                                                                   |
+| Organization name             | `{{ORG_NAME}}` in docs                                     | display name                                                                                                                                                          |
+| GitHub org/user               | `{{GITHUB_ORG}}` in docs, issue links                      |                                                                                                                                                                       |
+| Maintainer                    | `{{MAINTAINER}}` in CODEOWNERS, CoC                        | user or team                                                                                                                                                          |
+| Platform                      | `{{PLATFORM}}`                                             | claude-code / codex / custom                                                                                                                                          |
+| Default branch                | `{{DEFAULT_BRANCH}}`                                       | the mechanical commit/push guard protects `main`/`master` by name; any other value relies on branch protection + convention                                           |
+| Ledger prefix                 | `BD_PREFIX` in `harness/beads.config` + `bd init -p`       | task IDs: `<prefix>-xxxx`                                                                                                                                             |
+| Harness git author            | `harness/sandbox-lib.sh`                                   | automated commits say "the harness made this" — substituted, not read from git config (the sandbox runs `env -i`)                                                     |
+| Reviewer backend              | `REVIEWER_BACKEND` default in `harness/reviewers.config`   | detected: prefers claude-fresh in a Claude Code environment, else ollama                                                                                              |
+| Target-repo branch namespace  | `FORGE_TARGET_BRANCH_NS` in `harness/branches.config`      | target-repo builder branches `<ns>/builder/<id>-<slug>`; default `forge/agent`; trusted by the reconcile close                                                        |
+| Container network             | `FORGE_SANDBOX_NETWORK` (**env-only knob**)                | default `bridge` (networked); `none` restores egress-deny. Init prompts + records the choice but does not persist it — export a non-default value in the shell/CI env |
+| Container-default for targets | `FORGE_TARGET_CONTAINER` (**env-only knob**)               | default `1` (container-default target builds); `0` = host-side. Same env-only handling as above                                                                       |
+| Marker namespace              | `forge:` -> `<yours>:` everywhere it is emitted AND parsed | default fine; init renames atomically and verifies count parity                                                                                                       |
 
 Init state is recorded in `.forge/.initialized` (gitignored). Re-running init is guarded.
 
@@ -116,15 +116,15 @@ gate, reconcile, branch, or floor path invokes `vault.sh`.
 
 ## Runtime knobs (environment)
 
-| Variable | Effect |
-|----------|--------|
-| `FORGE_SANDBOX=1` | run the task inside the isolation container (opt-in; shipped manifest is `--network none` today — workspace isolation, not an airtight sandbox). Mandatory for non-attended builds — the harness refuses without it |
-| `FORGE_SANDBOX_IMAGE` | override the sandbox base image (default: a devcontainers javascript-node image) |
-| `TARGET=<type>` | select the targets.config stanza |
-| `REVIEWER_BACKEND=<b>` | one-shot reviewer backend override |
-| `FORGE_GATE_STRICT=1` | any honest SKIP reddens the gate (set on fully-provisioned runners) |
-| `FORGE_UNATTENDED=1` | unattended posture: implies strict gate |
-| `BD_CLOSED_WINDOW` | days of closed tasks shown in the board Done lane |
+| Variable               | Effect                                                                                                                                                                                                              |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FORGE_SANDBOX=1`      | run the task inside the isolation container (opt-in; shipped manifest is `--network none` today — workspace isolation, not an airtight sandbox). Mandatory for non-attended builds — the harness refuses without it |
+| `FORGE_SANDBOX_IMAGE`  | override the sandbox base image (default: a devcontainers javascript-node image)                                                                                                                                    |
+| `TARGET=<type>`        | select the targets.config stanza                                                                                                                                                                                    |
+| `REVIEWER_BACKEND=<b>` | one-shot reviewer backend override                                                                                                                                                                                  |
+| `FORGE_GATE_STRICT=1`  | any honest SKIP reddens the gate (set on fully-provisioned runners)                                                                                                                                                 |
+| `FORGE_UNATTENDED=1`   | unattended posture: implies strict gate                                                                                                                                                                             |
+| `BD_CLOSED_WINDOW`     | days of closed tasks shown in the board Done lane                                                                                                                                                                   |
 
 ### Non-test evidence (P6a)
 

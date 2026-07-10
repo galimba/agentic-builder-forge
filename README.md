@@ -8,7 +8,7 @@ A deterministic, **Claude-Code-first** control plane for agentic software develo
 
 ## What Is This
 
-The Forge runs *governed autonomy*. The agent does the implementation work and a second agent reviews it, but the boundary around them is deterministic — an enforcement layer (**the floor**) made of deny-by-default hooks that don't depend on a model's judgment and fail *closed*. The decision to ship is always a human's: the harness opens and reviews pull requests; it never merges them. That split — autonomous build, human-gated release — is the control loop the whole workflow is built around.
+The Forge runs _governed autonomy_. The agent does the implementation work and a second agent reviews it, but the boundary around them is deterministic — an enforcement layer (**the floor**) made of deny-by-default hooks that don't depend on a model's judgment and fail _closed_. The decision to ship is always a human's: the harness opens and reviews pull requests; it never merges them. That split — autonomous build, human-gated release — is the control loop the whole workflow is built around.
 
 The Forge is **Claude-Code-first**: its real-time enforcement — the `PreToolUse` / `PostToolUse` / `Stop` / `SessionStart` hooks — is built around Claude Code. Other agents (e.g. Codex) can follow the same workflow in a weaker sense, bounded by the git hooks and the fail-closed harness scripts, but they do **not** get the real-time hook floor. It is a control repo that stays **external** to the code it builds — it operates on separate target repositories and never embeds itself into them.
 
@@ -81,14 +81,14 @@ New here? Start with [`docs/getting-started.md`](docs/getting-started.md), which
 
 ## Prerequisites
 
-| Tool | Needed for | Notes |
-| --- | --- | --- |
-| `bash`, `git`, `jq` | everything | the hooks fail closed without `jq` |
-| Node.js ≥ 18.18 + `pnpm` | the default TypeScript build target and the harness's own test suites | |
-| Beads (`bd`) | the task ledger | **load-bearing** — the task lifecycle cannot run without it; the bd-dependent suites SKIP honestly if absent. Installed separately; `init.sh` pins the binary path and version. |
-| GitHub CLI (`gh`) | the PR flow and the optional oversight board | authenticated |
-| A reviewer backend | advisory PR review | one of: `ollama` with a pulled model, the `claude` CLI, or the `codex` CLI — model names in `harness/reviewers.config` are **examples you must provision** |
-| Docker + devcontainer CLI | *for container builds* | the isolation container is the default for target builds and required for unattended runs (attended self-build runs host-side) |
+| Tool                      | Needed for                                                            | Notes                                                                                                                                                                           |
+| ------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bash`, `git`, `jq`       | everything                                                            | the hooks fail closed without `jq`                                                                                                                                              |
+| Node.js ≥ 20.19 + `pnpm`  | the default TypeScript build target and the harness's own test suites | ESLint 10 requires ≥ 20.19                                                                                                                                                      |
+| Beads (`bd`)              | the task ledger                                                       | **load-bearing** — the task lifecycle cannot run without it; the bd-dependent suites SKIP honestly if absent. Installed separately; `init.sh` pins the binary path and version. |
+| GitHub CLI (`gh`)         | the PR flow and the optional oversight board                          | authenticated                                                                                                                                                                   |
+| A reviewer backend        | advisory PR review                                                    | one of: `ollama` with a pulled model, the `claude` CLI, or the `codex` CLI — model names in `harness/reviewers.config` are **examples you must provision**                      |
+| Docker + devcontainer CLI | _for container builds_                                                | the isolation container is the default for target builds and required for unattended runs (attended self-build runs host-side)                                                  |
 
 ## What's Included
 
@@ -135,16 +135,16 @@ read-only enforcement mounts, dropped caps, and an unprivileged user.
 
 ## Documentation
 
-| Document | Covers |
-| --- | --- |
-| [`docs/getting-started.md`](docs/getting-started.md) | From clone to first merged PR. |
-| [`docs/architecture.md`](docs/architecture.md) | Every component, the enforcement tier stack, the floor identity and witness. |
-| [`docs/lifecycle.md`](docs/lifecycle.md) | The end-to-end flow — intake and build, and who acts at each stage. |
-| [`docs/operating.md`](docs/operating.md) | Env/config controls, runtime records, the audited escape doors, the board. |
-| [`docs/development.md`](docs/development.md) | How the harness itself is changed safely. |
-| [`docs/configuration.md`](docs/configuration.md) | Every config seam, field by field. |
-| [`docs/limitations.md`](docs/limitations.md) | The complete honest boundary, every known limitation, tagged. |
-| [`docs/deny-floor.md`](docs/deny-floor.md) | The claim↔test classification: each guarantee / tripwire / non-claim + its proving test. |
+| Document                                             | Covers                                                                                   |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| [`docs/getting-started.md`](docs/getting-started.md) | From clone to first merged PR.                                                           |
+| [`docs/architecture.md`](docs/architecture.md)       | Every component, the enforcement tier stack, the floor identity and witness.             |
+| [`docs/lifecycle.md`](docs/lifecycle.md)             | The end-to-end flow — intake and build, and who acts at each stage.                      |
+| [`docs/operating.md`](docs/operating.md)             | Env/config controls, runtime records, the audited escape doors, the board.               |
+| [`docs/development.md`](docs/development.md)         | How the harness itself is changed safely.                                                |
+| [`docs/configuration.md`](docs/configuration.md)     | Every config seam, field by field.                                                       |
+| [`docs/limitations.md`](docs/limitations.md)         | The complete honest boundary, every known limitation, tagged.                            |
+| [`docs/deny-floor.md`](docs/deny-floor.md)           | The claim↔test classification: each guarantee / tripwire / non-claim + its proving test. |
 
 `init.sh` also renders an onboarding doc into `docs/` with your instance's own values.
 
